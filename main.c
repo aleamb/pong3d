@@ -14,7 +14,7 @@
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 8)
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
-#define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 2)
+#define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define UNIT_ANGLE 6.283185307f / BALL_SEGMENTS
 
 
@@ -93,11 +93,18 @@ void create_vao(PONG_ELEMENT* element) {
 
 int setup_renderer(int width, int height) {
 
+  GLenum err = glewInit();
+  if (err != GLEW_OK) {
+    fprintf(stderr, "OpenGL error: %s\n", glewGetErrorString(err));
+    return -1;
+  }
   glViewport(0, 0, width, height);
   glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
   glDisable(GL_CULL_FACE);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
 
   create_vao(&player_stick);
   create_vao(&enemy_stick);
@@ -241,12 +248,13 @@ void run_game() {
 				}
 			}
 		}
+  SDL_GL_SwapWindow(window);
 	}
 }
 
 void free_pong_element(PONG_ELEMENT* element) {
-    free(element->vertex);
-    free(element->elements);
+  free(element->vertex);
+  free(element->elements);
 }
 
 void dispose_game_elements() {
@@ -267,7 +275,7 @@ void dispose_game_element_render(PONG_ELEMENT* element) {
 }
 
 void dispose_renderer() {
-    glDisableVertexAttribArray(0);
+    //glDisableVertexAttribArray(0);
     dispose_game_element_render(&player_stick);
     dispose_game_element_render(&enemy_stick);
     dispose_game_element_render(&ball);
@@ -276,8 +284,8 @@ void dispose_renderer() {
 
 void cleanup() {
   dispose_screen();
-  dispose_game_elements();
   dispose_renderer();
+  dispose_game_elements();
 }
 int main(int argc, char** argv[]) {
 
