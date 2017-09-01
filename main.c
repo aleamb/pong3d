@@ -82,12 +82,12 @@ void create_vao(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
   glGenBuffers(1, &element->vbo);
   glBindBuffer(GL_ARRAY_BUFFER, element->vbo);
-  glBufferData(GL_ARRAY_BUFFER, element->vertex_count, element->vertex, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, element->vertex_count * 3 * sizeof(float), element->vertex, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(0);
   glGenBuffers(1, &element->ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count, element->elements, GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(int), element->elements, GL_STATIC_DRAW);
   glBindVertexArray(0);
 }
 
@@ -104,12 +104,12 @@ int setup_renderer(int width, int height) {
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
   create_vao(&player_stick);
   create_vao(&enemy_stick);
   create_vao(&ball);
   create_vao(&stage);
+
+  glCreateShader(GL_VERTEX_SHADER);
 
   return 0;
 }
@@ -134,8 +134,6 @@ void setup_stick(PONG_ELEMENT* stick) {
   stick->vertex[9] = 0.5f;
   stick->vertex[10] = -0.5f;
   stick->vertex[11] = 0.0f;
-
-  normalize(stick->vertex, 4);
 }
 
 void setup_player_stick() {
