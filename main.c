@@ -4,6 +4,11 @@
 #include <math.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
+#include <string.h>
+#include <stdarg.h>
+
+
+#define ERRORMSG_MAX_LENGTH 256
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -38,6 +43,26 @@ PONG_ELEMENT player_stick;
 PONG_ELEMENT enemy_stick;
 PONG_ELEMENT ball;
 PONG_ELEMENT stage;
+
+GLuint vertex_shader:
+GLuint fragment_shader;
+
+GLchar errormsg[ERRORMSG_MAX_LENGTH];
+GLchar *vertex_shader_source = "
+  #version 330
+  in vec3 in_Position;
+  void main(void) {
+      gl_Position = vec4(in_Position.x, in_Position.y, in_Position.z, 1.0);
+  }
+";
+GLchar *fragment_shader_source = "
+  #version 330
+  precision highp float;
+  in  vec4 ex_Color;
+  void main(void) {
+      gl_FragColor = vec4(ex_Color);
+  }
+";
 
 int setup_screen(int width, int height) {
 
@@ -91,6 +116,53 @@ void create_vao(PONG_ELEMENT* element) {
   glBindVertexArray(0);
 }
 
+GLuint build_shader(GLenum type, const char* source, GLint* result, GLchar *errormsg) {
+  GLuint id = glCreateShader(type);
+  int vertex_shader_length = 1;
+  glShaderSource(id, 1, &source, &vertex_shader_length);
+  glCompileShader(id);
+  int params;
+  glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &params);;
+  if (params == GL_FALSE) {
+    *result = -1;
+    if (erromsg != NULL) {
+        int maxLength;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
+        glGetShaderInfoLog(id, (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errmsg);
+    }
+    return -1;
+  } else {
+    *result = 0;
+  }
+  return id;
+}
+
+GLuint build_shaders_program(int* result, GLchar* errormsg, ...) {
+    va_list ap;
+    GLuint program_id = glCreateProgram();
+    va_start(ap, errormsg);
+    for(int j = 0; j < ; j++) {
+      GLuint shader = va_arg(ap, GLuint);
+      glAttachShader(program_id, shader);
+    }
+    va_end(ap);
+    glLinkProgram(program_id);
+    int params;
+    glGetProgramiv(program_id, GL_LINK_STATUS, &params);
+    if (params == GL_FALSE) {
+      *result = -1;
+      if (errormsg != NULL)
+        int maxLength;
+        glGetProgramInfoLog(program_id,
+          (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
+
+    } else {
+      *result = 0;
+    }
+    return program_id;
+}
+
+
 int setup_renderer(int width, int height) {
 
   GLenum err = glewInit();
@@ -109,8 +181,23 @@ int setup_renderer(int width, int height) {
   create_vao(&ball);
   create_vao(&stage);
 
-  glCreateShader(GL_VERTEX_SHADER);
-
+  int result;
+  int vertex_shader = build_shader(GL_VERTEX_SHADER, vertex_shader_source, &result, errormsg);
+  if (result != 0) {
+      printf( stderr, "Compile shader failed: %s\n", errormsg);
+      return -1;
+  }
+  int fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_source);
+  if (result != 0) {
+      fprintf( stderr, "Compile shader failed: %s\n", errormsg);
+      return -1;
+  }
+  int program = build_shaders_program(&result, errormsg, vertex_shader_source, fragment_shader_source);
+  if (result != 0) {
+      fprintf( stderr, "Links shaders program failed: %s\n", errormsg);
+      return -1;
+  }
+  glUseProgram(program);
   return 0;
 }
 
