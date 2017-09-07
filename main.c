@@ -6,18 +6,19 @@
 #include <GL/gl.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 
 #define ERRORMSG_MAX_LENGTH 256
 
 #define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
+#define WINDOW_HEIGHT 400
 
-#define STAGE_BLOCKS 5
+#define STAGE_BLOCKS 4
 #define BALL_SEGMENTS 20
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
-#define STAGE_INDICES_COUNT (STAGE_BLOCKS * 8)
+#define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define UNIT_ANGLE 6.283185307f / BALL_SEGMENTS
@@ -28,7 +29,7 @@ SDL_GLContext mainContext;
 
 typedef struct {
   float* vertex;
-  int* elements;
+  unsigned int* elements;
   int vertex_count;
   int elements_count;
   float x;
@@ -44,25 +45,27 @@ PONG_ELEMENT enemy_stick;
 PONG_ELEMENT ball;
 PONG_ELEMENT stage;
 
-GLuint vertex_shader:
+GLuint vertex_shader;
 GLuint fragment_shader;
+GLuint program;
 
 GLchar errormsg[ERRORMSG_MAX_LENGTH];
-GLchar *vertex_shader_source = "
-  #version 330
-  in vec3 in_Position;
-  void main(void) {
-      gl_Position = vec4(in_Position.x, in_Position.y, in_Position.z, 1.0);
-  }
-";
-GLchar *fragment_shader_source = "
-  #version 330
-  precision highp float;
-  in  vec4 ex_Color;
-  void main(void) {
-      gl_FragColor = vec4(ex_Color);
-  }
-";
+
+const GLchar* vertex_shader_source = "#version 430 core\n \
+in vec3 in_Position;\n \
+uniform mat4 projectionMatrix;\n \
+void main(void) {\n \
+  gl_Position = projectionMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0) ;\n \
+}";
+
+const GLchar* fragment_shader_source = "#version 430 core\n \
+precision highp float;\n \
+in vec4 ex_Color;\n \
+void main(void) {\n \
+  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n \
+}";
+
+float projection_matrix[16];
 
 int setup_screen(int width, int height) {
 
@@ -105,30 +108,34 @@ void normalize(float* mesh, int size) {
 void create_vao(PONG_ELEMENT* element) {
   glGenVertexArrays(1, &element->vao);
   glBindVertexArray(element->vao);
+
   glGenBuffers(1, &element->vbo);
   glBindBuffer(GL_ARRAY_BUFFER, element->vbo);
   glBufferData(GL_ARRAY_BUFFER, element->vertex_count * 3 * sizeof(float), element->vertex, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(0);
+
   glGenBuffers(1, &element->ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(int), element->elements, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(unsigned int), element->elements, GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }
 
-GLuint build_shader(GLenum type, const char* source, GLint* result, GLchar *errormsg) {
+GLuint build_shader(GLenum type, const GLchar* source, GLint* result, GLchar *errormsg) {
   GLuint id = glCreateShader(type);
-  int vertex_shader_length = 1;
-  glShaderSource(id, 1, &source, &vertex_shader_length);
+  glShaderSource(id, 1, &source, NULL);
   glCompileShader(id);
   int params;
-  glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &params);;
+  glGetShaderiv(id, GL_COMPILE_STATUS, &params);
   if (params == GL_FALSE) {
     *result = -1;
-    if (erromsg != NULL) {
+    if (errormsg != NULL) {
         int maxLength;
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
-        glGetShaderInfoLog(id, (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errmsg);
+        glGetShaderInfoLog(id,
+          (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
     }
     return -1;
   } else {
@@ -137,30 +144,47 @@ GLuint build_shader(GLenum type, const char* source, GLint* result, GLchar *erro
   return id;
 }
 
-GLuint build_shaders_program(int* result, GLchar* errormsg, ...) {
+GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...) {
     va_list ap;
     GLuint program_id = glCreateProgram();
     va_start(ap, errormsg);
-    for(int j = 0; j < ; j++) {
+    for(int j = 0; j < count; j++) {
       GLuint shader = va_arg(ap, GLuint);
       glAttachShader(program_id, shader);
     }
     va_end(ap);
+    glBindAttribLocation(program_id, 0, "in_Position");
     glLinkProgram(program_id);
-    int params;
+    GLint params;
     glGetProgramiv(program_id, GL_LINK_STATUS, &params);
     if (params == GL_FALSE) {
       *result = -1;
-      if (errormsg != NULL)
+      if (errormsg != NULL) {
         int maxLength;
+        glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &maxLength);
         glGetProgramInfoLog(program_id,
           (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
-
+      }
     } else {
       *result = 0;
     }
     return program_id;
 }
+
+void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out) {
+  const float
+    y_scale = 1.0 / tan(M_PI / 180.0 * (fovy / 2.0)),
+    x_scale = y_scale / aspect_ratio,
+    frustum_length = far_plane - near_plane;
+
+  memset(out, 0, sizeof(projection_matrix));
+  out[0] = x_scale;
+  out[5] = y_scale;
+  out[10] = -((far_plane + near_plane) / frustum_length);
+  out[11] = -1;
+  out[14] = -((2 * near_plane * far_plane) / frustum_length);
+}
+
 
 
 int setup_renderer(int width, int height) {
@@ -173,54 +197,64 @@ int setup_renderer(int width, int height) {
   glViewport(0, 0, width, height);
   glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
   glDisable(GL_CULL_FACE);
+  //glEnable(GL_PROGRAM_POINT_SIZE);
+  //glPointSize(3.0f);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  int result;
+  vertex_shader = build_shader(GL_VERTEX_SHADER, vertex_shader_source, &result, errormsg);
+  if (result != 0) {
+      fprintf( stderr, "Compile vertex shader failed: %s\n", errormsg);
+      return -1;
+  }
+  fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_source, &result, errormsg);
+  if (result != 0) {
+      fprintf( stderr, "Compile fragment shader failed: %s\n", errormsg);
+      return -1;
+  }
+  program = build_shaders_program(2, &result, errormsg, vertex_shader, fragment_shader);
+  if (result != 0) {
+      fprintf( stderr, "Links shaders program failed: %s\n", errormsg);
+      return -1;
+  }
+
+  glUseProgram(program);
 
   create_vao(&player_stick);
   create_vao(&enemy_stick);
   create_vao(&ball);
   create_vao(&stage);
 
-  int result;
-  int vertex_shader = build_shader(GL_VERTEX_SHADER, vertex_shader_source, &result, errormsg);
-  if (result != 0) {
-      printf( stderr, "Compile shader failed: %s\n", errormsg);
-      return -1;
-  }
-  int fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_source);
-  if (result != 0) {
-      fprintf( stderr, "Compile shader failed: %s\n", errormsg);
-      return -1;
-  }
-  int program = build_shaders_program(&result, errormsg, vertex_shader_source, fragment_shader_source);
-  if (result != 0) {
-      fprintf( stderr, "Links shaders program failed: %s\n", errormsg);
-      return -1;
-  }
-  glUseProgram(program);
+  create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f, projection_matrix);
+  GLuint uniformId = glGetUniformLocation(program, "projectionMatrix");
+  glUniformMatrix4fv(uniformId, 1, GL_FALSE, projection_matrix);
+
   return 0;
 }
 
 void setup_stick(PONG_ELEMENT* stick) {
+
   stick->vertex = (float*)malloc(sizeof(float) * 12);
   stick->vertex_count = 4;
   stick->elements = (int*)malloc(sizeof(int) * 6);
+
   stick->elements_count = 6;
   stick->vertex[0] = -0.5f;
   stick->vertex[1] = -0.5f;
-  stick->vertex[2] = 0.0f;
+  stick->vertex[2] = -1.0f;
 
   stick->vertex[3] = -0.5f;
   stick->vertex[4] = 0.5f;
-  stick->vertex[5] = 0.0f;
+  stick->vertex[5] = -1.0f;
 
   stick->vertex[6] = 0.5f;
   stick->vertex[7] = 0.5f;
-  stick->vertex[8] = 0.0f;
+  stick->vertex[8] = -1.0f;
 
   stick->vertex[9] = 0.5f;
   stick->vertex[10] = -0.5f;
-  stick->vertex[11] = 0.0f;
+  stick->vertex[11] = -1.0f;
 }
 
 void setup_player_stick() {
@@ -238,41 +272,40 @@ void setup_enemy_stick() {
 }
 
 void setup_stage() {
-  int vertex = 0;
-  int index = 6;
-  int initial_index[] = { 0, 4, 5, 5, 1, 0 };
 
+  int vertex = 0;
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
   stage.elements = (int*)malloc(sizeof(int) * STAGE_INDICES_COUNT);
 
   stage.vertex_count = STAGE_VERTICES_COUNT;
   stage.elements_count = STAGE_INDICES_COUNT;
 
-  memcpy(stage.elements, initial_index, sizeof(initial_index));
-
   for (int i = 0; i <= STAGE_BLOCKS; i++) {
     stage.vertex[vertex++] = -0.5f;
     stage.vertex[vertex++] = 0.5f;
-    stage.vertex[vertex++] = -1.0f * i;
+    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
 
     stage.vertex[vertex++] = 0.5f;
     stage.vertex[vertex++] = 0.5f;
-    stage.vertex[vertex++] = -1.0f * i;
+    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
 
     stage.vertex[vertex++] = 0.5f;
     stage.vertex[vertex++] = -0.5f;
-    stage.vertex[vertex++] = -1.0f * i;
+    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
 
     stage.vertex[vertex++] = -0.5f;
     stage.vertex[vertex++] = -0.5f;
-    stage.vertex[vertex++] = -1.0f * i;
+    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
+  }
 
-    stage.elements[index++] = initial_index[0]++;
-    stage.elements[index++] = initial_index[1]++;
-    stage.elements[index++] = initial_index[2]++;
-    stage.elements[index++] = initial_index[3]++;
-    stage.elements[index++] = initial_index[4]++;
-    stage.elements[index++] = initial_index[5]++;
+  for (int i = 0, j = 0; i < (STAGE_VERTICES_COUNT - 4); i++, j += 6) {
+      stage.elements[j] = i;
+      stage.elements[j + 1] = i + 4;
+      stage.elements[j + 2] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
+
+      stage.elements[j + 3] = i;
+      stage.elements[j + 4] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
+      stage.elements[j + 5] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
   }
 }
 
@@ -309,31 +342,34 @@ void setup_ball() {
     }
   }
 }
+void render() {
 
+  glBindVertexArray(stage.vao);
+  glDrawElements(GL_TRIANGLES, stage.elements_count, GL_UNSIGNED_INT, 0);
+  //glDrawArrays(GL_POINTS, 0, stage.vertex_count);
+  glBindVertexArray(0);
+  SDL_GL_SwapWindow(window);
+}
 void run_game() {
   int loop = 1;
 
 	while (loop)
 	{
 		SDL_Event event;
-		while (SDL_PollEvent(&event))
-		{
-			if (event.type == SDL_QUIT)
-				loop = 0;
+		SDL_PollEvent(&event);
 
-			if (event.type == SDL_KEYDOWN)
-			{
-				switch (event.key.keysym.sym)
-				{
+		if (event.type == SDL_QUIT) {
+			loop = 0;
+    } else if (event.type == SDL_KEYDOWN) {
+      switch (event.key.keysym.sym) {
 				case SDLK_ESCAPE:
 					loop = 0;
 					break;
 				default:
 					break;
-				}
 			}
 		}
-  SDL_GL_SwapWindow(window);
+    render();
 	}
 }
 
@@ -360,11 +396,16 @@ void dispose_game_element_render(PONG_ELEMENT* element) {
 }
 
 void dispose_renderer() {
-    //glDisableVertexAttribArray(0);
-    dispose_game_element_render(&player_stick);
-    dispose_game_element_render(&enemy_stick);
-    dispose_game_element_render(&ball);
-    dispose_game_element_render(&stage);
+  glUseProgram(0);
+  glDetachShader(program, vertex_shader);
+  glDetachShader(program, fragment_shader);
+  glDeleteProgram(program);
+  glDeleteShader(vertex_shader);
+  glDeleteShader(fragment_shader);
+  dispose_game_element_render(&player_stick);
+  dispose_game_element_render(&enemy_stick);
+  dispose_game_element_render(&ball);
+  dispose_game_element_render(&stage);
 }
 
 void cleanup() {
