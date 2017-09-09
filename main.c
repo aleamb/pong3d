@@ -11,10 +11,10 @@
 
 #define ERRORMSG_MAX_LENGTH 256
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 400
+#define WINDOW_WIDTH 600
+#define WINDOW_HEIGHT 378
 
-#define STAGE_BLOCKS 4
+#define STAGE_BLOCKS 7
 #define BALL_SEGMENTS 20
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
@@ -22,7 +22,6 @@
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define UNIT_ANGLE 6.283185307f / BALL_SEGMENTS
-
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -38,6 +37,9 @@ typedef struct {
   GLuint vao;
   GLuint vbo;
   GLuint ebo;
+  float width;
+  float height;
+  float model_matrix[16];
 }PONG_ELEMENT;
 
 PONG_ELEMENT player_stick;
@@ -54,8 +56,11 @@ GLchar errormsg[ERRORMSG_MAX_LENGTH];
 const GLchar* vertex_shader_source = "#version 430 core\n \
 in vec3 in_Position;\n \
 uniform mat4 projectionMatrix;\n \
+uniform mat4 viewMatrix;\n \
+uniform mat4 modelMatrix;\n \
 void main(void) {\n \
-  gl_Position = projectionMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0) ;\n \
+  vec4 pos = modelMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0);\n \
+  gl_Position = viewMatrix * projectionMatrix * pos;\n \
 }";
 
 const GLchar* fragment_shader_source = "#version 430 core\n \
@@ -66,6 +71,11 @@ void main(void) {\n \
 }";
 
 float projection_matrix[16];
+float view_matrix[16];
+
+GLuint projectionMatrixId;
+GLuint viewMatrixId;
+GLuint modelMatrixId;
 
 int setup_screen(int width, int height) {
 
@@ -185,6 +195,25 @@ void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, 
   out[14] = -((2 * near_plane * far_plane) / frustum_length);
 }
 
+void load_identity_matrix(float *out) {
+
+  out[0] = 1.0f;
+  out[1] = 0.0f;
+  out[2] = 0.0f;
+  out[3] = 0.0f;
+  out[4] = 0.0f;
+  out[5] = 1.0f;
+  out[6] = 0.0f;
+  out[7] = 0.0f;
+  out[8] = 0.0f;
+  out[9] = 0.0f;
+  out[10] = 1.0f;
+  out[11] = 0.0f;
+  out[12] = 0.0f;
+  out[13] = 0.0f;
+  out[14] = 0.0f;
+  out[15] = 1.0f;
+}
 
 
 int setup_renderer(int width, int height) {
@@ -194,7 +223,6 @@ int setup_renderer(int width, int height) {
     fprintf(stderr, "OpenGL error: %s\n", glewGetErrorString(err));
     return -1;
   }
-  glViewport(0, 0, width, height);
   glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
   glDisable(GL_CULL_FACE);
   //glEnable(GL_PROGRAM_POINT_SIZE);
@@ -226,35 +254,52 @@ int setup_renderer(int width, int height) {
   create_vao(&ball);
   create_vao(&stage);
 
-  create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f, projection_matrix);
-  GLuint uniformId = glGetUniformLocation(program, "projectionMatrix");
-  glUniformMatrix4fv(uniformId, 1, GL_FALSE, projection_matrix);
+  load_identity_matrix(view_matrix);
+  create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.0f, 100.0f, projection_matrix);
+  projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
+  viewMatrixId = glGetUniformLocation(program, "viewMatrix");
+  modelMatrixId = glGetUniformLocation(program, "modelMatrix");
+  glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
+  glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
   return 0;
 }
 
+
 void setup_stick(PONG_ELEMENT* stick) {
 
+  float size_x = 1.0f;
+  float size_y = 1.0f;
   stick->vertex = (float*)malloc(sizeof(float) * 12);
   stick->vertex_count = 4;
   stick->elements = (int*)malloc(sizeof(int) * 6);
 
   stick->elements_count = 6;
-  stick->vertex[0] = -0.5f;
-  stick->vertex[1] = -0.5f;
-  stick->vertex[2] = -1.0f;
+  stick->vertex[0] = -size_x;
+  stick->vertex[1] = -size_y;
+  stick->vertex[2] = 0.0f;
 
-  stick->vertex[3] = -0.5f;
-  stick->vertex[4] = 0.5f;
-  stick->vertex[5] = -1.0f;
+  stick->vertex[3] = -size_x;
+  stick->vertex[4] = size_y;
+  stick->vertex[5] = 0.0f;
 
-  stick->vertex[6] = 0.5f;
-  stick->vertex[7] = 0.5f;
-  stick->vertex[8] = -1.0f;
+  stick->vertex[6] = size_x;
+  stick->vertex[7] = size_y;
+  stick->vertex[8] = 0.0f;
 
-  stick->vertex[9] = 0.5f;
-  stick->vertex[10] = -0.5f;
-  stick->vertex[11] = -1.0f;
+  stick->vertex[9] = size_x;
+  stick->vertex[10] = -size_y;
+  stick->vertex[11] = 0.0f;
+
+  stick->elements[0] = 0;
+  stick->elements[1] = 1;
+  stick->elements[2] = 2;
+  stick->elements[3] = 2;
+  stick->elements[4] = 3;
+  stick->elements[5] = 0;
+
+  load_identity_matrix(stick->model_matrix);
+
 }
 
 void setup_player_stick() {
@@ -262,6 +307,7 @@ void setup_player_stick() {
   player_stick.y = 0.0f;
   player_stick.z = 0.0f;
   setup_stick(&player_stick);
+  player_stick.model_matrix[14] = -2.0f;
 }
 
 void setup_enemy_stick() {
@@ -274,6 +320,7 @@ void setup_enemy_stick() {
 void setup_stage() {
 
   int vertex = 0;
+  float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
   stage.elements = (int*)malloc(sizeof(int) * STAGE_INDICES_COUNT);
 
@@ -281,21 +328,21 @@ void setup_stage() {
   stage.elements_count = STAGE_INDICES_COUNT;
 
   for (int i = 0; i <= STAGE_BLOCKS; i++) {
-    stage.vertex[vertex++] = -0.5f;
-    stage.vertex[vertex++] = 0.5f;
-    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
+    stage.vertex[vertex++] = -1.0f * aspect;
+    stage.vertex[vertex++] = 1.0f;
+    stage.vertex[vertex++] = (-0.5f * (float)i);
 
-    stage.vertex[vertex++] = 0.5f;
-    stage.vertex[vertex++] = 0.5f;
-    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
+    stage.vertex[vertex++] = 1.0f * aspect;
+    stage.vertex[vertex++] = 1.0f;
+    stage.vertex[vertex++] = (-0.5f * (float)i);
 
-    stage.vertex[vertex++] = 0.5f;
-    stage.vertex[vertex++] = -0.5f;
-    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
+    stage.vertex[vertex++] = 1.0f * aspect;
+    stage.vertex[vertex++] = -1.0f ;
+    stage.vertex[vertex++] = (-0.5f * (float)i);
 
-    stage.vertex[vertex++] = -0.5f;
-    stage.vertex[vertex++] = -0.5f;
-    stage.vertex[vertex++] = (-1.0f * (float)i) - 1.5f;
+    stage.vertex[vertex++] = -1.0f * aspect;
+    stage.vertex[vertex++] = -1.0f ;
+    stage.vertex[vertex++] = (-0.5f * (float)i);
   }
 
   for (int i = 0, j = 0; i < (STAGE_VERTICES_COUNT - 4); i++, j += 6) {
@@ -307,6 +354,8 @@ void setup_stage() {
       stage.elements[j + 4] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
       stage.elements[j + 5] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
   }
+  load_identity_matrix(stage.model_matrix);
+  stage.model_matrix[14] = -1.7f;
 }
 
 void setup_ball() {
@@ -341,13 +390,22 @@ void setup_ball() {
       ball.elements[index++] = initial_index[5]++;
     }
   }
+  load_identity_matrix(ball.model_matrix);
+}
+void render_pong_element(PONG_ELEMENT* element) {
+  glBindVertexArray(element->vao);
+  glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
+  glDrawElements(GL_TRIANGLES, element->elements_count, GL_UNSIGNED_INT, 0);
+  glBindVertexArray(0);
 }
 void render() {
 
-  glBindVertexArray(stage.vao);
-  glDrawElements(GL_TRIANGLES, stage.elements_count, GL_UNSIGNED_INT, 0);
-  //glDrawArrays(GL_POINTS, 0, stage.vertex_count);
-  glBindVertexArray(0);
+  render_pong_element(&stage);
+  render_pong_element(&player_stick);
+  //render_pong_element(enemy_stick);
+  //render_pong_element(ball);
+
+
   SDL_GL_SwapWindow(window);
 }
 void run_game() {
