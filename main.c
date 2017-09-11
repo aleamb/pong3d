@@ -21,7 +21,7 @@
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
-#define UNIT_ANGLE 6.283185307f / BALL_SEGMENTS
+#define UNIT_ANGLE (6.283185307f / BALL_SEGMENTS)
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -39,6 +39,7 @@ typedef struct {
   GLuint ebo;
   float width;
   float height;
+  float large;
   float model_matrix[16];
 }PONG_ELEMENT;
 
@@ -268,27 +269,33 @@ int setup_renderer(int width, int height) {
 
 void setup_stick(PONG_ELEMENT* stick) {
 
-  float size_x = 1.0f;
-  float size_y = 1.0f;
+  float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
+
+  stick->width = 0.16f;
+  stick->height = 0.16f / aspect;
+
+  float width2 = stick->width / 2.0f;
+  float height2 = stick->height / 2.0f;
+
   stick->vertex = (float*)malloc(sizeof(float) * 12);
   stick->vertex_count = 4;
   stick->elements = (int*)malloc(sizeof(int) * 6);
 
   stick->elements_count = 6;
-  stick->vertex[0] = -size_x;
-  stick->vertex[1] = -size_y;
+  stick->vertex[0] = -width2;
+  stick->vertex[1] = -height2;
   stick->vertex[2] = 0.0f;
 
-  stick->vertex[3] = -size_x;
-  stick->vertex[4] = size_y;
+  stick->vertex[3] = -width2;
+  stick->vertex[4] = height2;
   stick->vertex[5] = 0.0f;
 
-  stick->vertex[6] = size_x;
-  stick->vertex[7] = size_y;
+  stick->vertex[6] = width2;
+  stick->vertex[7] = height2;
   stick->vertex[8] = 0.0f;
 
-  stick->vertex[9] = size_x;
-  stick->vertex[10] = -size_y;
+  stick->vertex[9] = width2;
+  stick->vertex[10] = -height2;
   stick->vertex[11] = 0.0f;
 
   stick->elements[0] = 0;
@@ -305,22 +312,26 @@ void setup_stick(PONG_ELEMENT* stick) {
 void setup_player_stick() {
   player_stick.x = 0.0f;
   player_stick.y = 0.0f;
-  player_stick.z = 0.0f;
   setup_stick(&player_stick);
-  player_stick.model_matrix[14] = -2.0f;
+  player_stick.model_matrix[14] = -0.5f;
 }
 
 void setup_enemy_stick() {
   enemy_stick.x = 0.0f;
   enemy_stick.y = 0.0f;
-  enemy_stick.z = -1.0f;
   setup_stick(&enemy_stick);
+  enemy_stick.model_matrix[14] = -(STAGE_BLOCKS * 0.2f) - 0.5f;
 }
 
 void setup_stage() {
 
   int vertex = 0;
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
+
+  stage.width = 1.0f;
+  stage.height = 1.0f / aspect;
+  stage.large = 0.2f;
+
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
   stage.elements = (int*)malloc(sizeof(int) * STAGE_INDICES_COUNT);
 
@@ -328,21 +339,21 @@ void setup_stage() {
   stage.elements_count = STAGE_INDICES_COUNT;
 
   for (int i = 0; i <= STAGE_BLOCKS; i++) {
-    stage.vertex[vertex++] = -1.0f * aspect;
-    stage.vertex[vertex++] = 1.0f;
-    stage.vertex[vertex++] = (-0.5f * (float)i);
+    stage.vertex[vertex++] = -stage.width / 2.0;
+    stage.vertex[vertex++] = stage.height / 2.0;
+    stage.vertex[vertex++] = (-stage.large * (float)i);
 
-    stage.vertex[vertex++] = 1.0f * aspect;
-    stage.vertex[vertex++] = 1.0f;
-    stage.vertex[vertex++] = (-0.5f * (float)i);
+    stage.vertex[vertex++] = stage.width / 2.0;
+    stage.vertex[vertex++] = stage.height / 2.0;
+    stage.vertex[vertex++] = (-stage.large * (float)i);
 
-    stage.vertex[vertex++] = 1.0f * aspect;
-    stage.vertex[vertex++] = -1.0f ;
-    stage.vertex[vertex++] = (-0.5f * (float)i);
+    stage.vertex[vertex++] = stage.width / 2.0;
+    stage.vertex[vertex++] = -stage.height / 2.0;
+    stage.vertex[vertex++] = (-stage.large * (float)i);
 
-    stage.vertex[vertex++] = -1.0f * aspect;
-    stage.vertex[vertex++] = -1.0f ;
-    stage.vertex[vertex++] = (-0.5f * (float)i);
+    stage.vertex[vertex++] = -stage.width / 2.0;
+    stage.vertex[vertex++] = -stage.height / 2.0;
+    stage.vertex[vertex++] = (-stage.large * (float)i);
   }
 
   for (int i = 0, j = 0; i < (STAGE_VERTICES_COUNT - 4); i++, j += 6) {
@@ -355,7 +366,7 @@ void setup_stage() {
       stage.elements[j + 5] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
   }
   load_identity_matrix(stage.model_matrix);
-  stage.model_matrix[14] = -1.7f;
+  stage.model_matrix[14] = -0.5f;
 }
 
 void setup_ball() {
@@ -365,6 +376,7 @@ void setup_ball() {
   float phi;
   int vertex = 0;
   int index = 6;
+  int m, p;
 
   ball.vertex = (float*)malloc(sizeof(float) * 3 * BALL_VERTICES_COUNT);
   ball.elements = (int*)malloc(sizeof(int) * BALL_INDICES_COUNT);
@@ -374,36 +386,41 @@ void setup_ball() {
 
   memcpy(ball.elements, initial_index, sizeof(initial_index));
 
-  for (int p = 0, theta = -M_PI_2; p < BALL_SEGMENTS; p++, theta += UNIT_ANGLE)
+  for (p = 0, theta = -M_PI_2; p < BALL_SEGMENTS; p++, theta += UNIT_ANGLE)
   {
-    for (int m = 0, phi = 0.0f; m < BALL_SEGMENTS; m++, phi += UNIT_ANGLE)
+    for (m = 0, phi = 0.0f; m < BALL_SEGMENTS; m++, phi += UNIT_ANGLE)
     {
-      ball.vertex[vertex++] = cos(theta) * sin(phi);
-      ball.vertex[vertex++] = sin(theta);
-      ball.vertex[vertex++] = cos(theta) * cos(phi);
-
-      ball.elements[index++] = initial_index[0]++;
-      ball.elements[index++] = initial_index[1]++;
-      ball.elements[index++] = initial_index[2]++;
-      ball.elements[index++] = initial_index[3]++;
-      ball.elements[index++] = initial_index[4]++;
-      ball.elements[index++] = initial_index[5]++;
+      ball.vertex[vertex++] = cos(theta) * sin(phi) * 0.02f;
+      ball.vertex[vertex++] = sin(theta) * 0.02f;
+      ball.vertex[vertex++] = cos(theta) * cos(phi) * 0.02f;
     }
   }
+  for (int i = 0, j = 0; i < (ball.vertex_count / 2); i++, j += 6) {
+      ball.elements[j] = i;
+      ball.elements[j + 1] = i + 20;
+      ball.elements[j + 2] = ((i + 1) % 20) == 0 ? i + 1 : i + 21;
+
+      ball.elements[j + 3] = i;
+      ball.elements[j + 4] = ((i + 1) % 20) == 0 ? i + 1 : i + 21;
+      ball.elements[j + 5] = ((i + 1) % 20) == 0 ? i - 19 : i + 1;
+  }
+
   load_identity_matrix(ball.model_matrix);
+  ball.model_matrix[14] = -0.5f;
 }
 void render_pong_element(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
   glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
   glDrawElements(GL_TRIANGLES, element->elements_count, GL_UNSIGNED_INT, 0);
+  //glDrawArrays(GL_POINTS, 0, element->vertex_count);
   glBindVertexArray(0);
 }
 void render() {
 
   render_pong_element(&stage);
   render_pong_element(&player_stick);
-  //render_pong_element(enemy_stick);
-  //render_pong_element(ball);
+  render_pong_element(&enemy_stick);
+  render_pong_element(&ball);
 
 
   SDL_GL_SwapWindow(window);
