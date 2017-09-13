@@ -16,7 +16,12 @@
 
 #define STAGE_BLOCKS 7
 #define BALL_SEGMENTS 20
-#define STAGE_BLOCK_LARGE 0.2f
+
+#define STAGE_BLOCK_WIDTH 1.0f
+
+#define STAGE_BLOCK_LARGE (STAGE_BLOCK_WIDTH / 5.0f)
+#define STICK_WIDTH (STAGE_BLOCK_WIDTH / 6.0f)
+#define BALL_RADIUS (STAGE_BLOCK_WIDTH / 50.0f)
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
@@ -25,7 +30,7 @@
 #define UNIT_ANGLE (6.283185307f / BALL_SEGMENTS)
 
 
-const float PERSPECTIVE_CORRECTION[] = { 0.0f, 0.0f, -0.5f } ;
+const float PERSPECTIVE_CORRECTION[] = { 0.0f, 0.0f, -0.55f } ;
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -72,7 +77,7 @@ uniform mat4 m2;\n \
 uniform mat4 m3;\n \
 void main(void) {\n \
   vec4 pos =  modelMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0);\n \
-  pos = viewMatrix * m2 * m3 * pos;\n \
+  pos = viewMatrix * pos;\n \
   gl_Position = projectionMatrix * pos;\n \
 }";
 
@@ -273,30 +278,6 @@ int setup_renderer(int width, int height) {
   viewMatrixId = glGetUniformLocation(program, "viewMatrix");
   modelMatrixId = glGetUniformLocation(program, "modelMatrix");
   glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
-
-  float m2[16];
-  float m3[16];
- GLuint m2Id = glGetUniformLocation(program, "m2");
- load_identity_matrix(m2);
-
- float sine = (float)sin(M_PI_2);
- float cosine = (float)cos(M_PI_2);
-
-
- m2[0] = cosine;
- m2[8] = sine;
- m2[2] = -sine;
- m2[10] = cosine;
-
-
- GLuint m3Id = glGetUniformLocation(program, "m3");
- load_identity_matrix(m3);
- m3[12] = 2.5f;
- m3[14] = 0.5f;
-
-
-  glUniformMatrix4fv(m2Id, 1, GL_FALSE, m2);
-  glUniformMatrix4fv(m3Id, 1, GL_FALSE, m3);
   glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
   return 0;
@@ -307,8 +288,8 @@ void setup_stick(PONG_ELEMENT* stick) {
 
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
 
-  stick->width = 0.16f;
-  stick->height = 0.16f / aspect;
+  stick->width = STICK_WIDTH;
+  stick->height = STICK_WIDTH / aspect;
 
   float width2 = stick->width / 2.0f;
   float height2 = stick->height / 2.0f;
@@ -346,14 +327,10 @@ void setup_stick(PONG_ELEMENT* stick) {
 }
 
 void setup_player_stick() {
-  player_stick.x = 0.0f;
-  player_stick.y = 0.0f;
   setup_stick(&player_stick);
 }
 
 void setup_enemy_stick() {
-  enemy_stick.x = 0.0f;
-  enemy_stick.y = 0.0f;
   setup_stick(&enemy_stick);
   enemy_stick.model_matrix[14] = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
 }
@@ -363,8 +340,8 @@ void setup_stage() {
   int vertex = 0;
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
 
-  stage.width = 1.0f;
-  stage.height = 1.0f / aspect;
+  stage.width = STAGE_BLOCK_WIDTH;
+  stage.height = STAGE_BLOCK_WIDTH / aspect;
   stage.large = STAGE_BLOCK_LARGE;
 
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
@@ -411,7 +388,7 @@ void setup_ball() {
   int vertex = 0;
   int index = 6;
   int m, p;
-  ball.width = 0.02f;
+  ball.width = BALL_RADIUS;
 
   ball.vertex = (float*)malloc(sizeof(float) * 3 * BALL_VERTICES_COUNT);
   ball.elements = (int*)malloc(sizeof(int) * BALL_INDICES_COUNT);
@@ -441,7 +418,7 @@ void setup_ball() {
   }
 
   load_identity_matrix(ball.model_matrix);
-  ball.model_matrix[14] = -0.5f - ball.width;
+  ball.model_matrix[14] = - ball.width / 2.0f;
 }
 void render_pong_element(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
@@ -502,10 +479,10 @@ void run_game() {
     if (ball.model_matrix[12] < ((-stage.width / 2.0f) + (ball.width / 2))) {
        ball_speed_vector[0] *= -1.0f;
     }
-    if (ball.model_matrix[13] >= ((stage.height / 2) - (ball.width / 2))) {
+    if (ball.model_matrix[13] > ((stage.height / 2) - (ball.width / 2))) {
        ball_speed_vector[1] *= -1.0f;
     }
-    if (ball.model_matrix[13] <= ((-stage.height / 2) + (ball.width / 2))) {
+    if (ball.model_matrix[13] < ((-stage.height / 2) + (ball.width / 2))) {
        ball_speed_vector[1] *= -1.0f;
     }
 
