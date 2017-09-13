@@ -16,12 +16,16 @@
 
 #define STAGE_BLOCKS 7
 #define BALL_SEGMENTS 20
+#define STAGE_BLOCK_LARGE 0.2f
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define UNIT_ANGLE (6.283185307f / BALL_SEGMENTS)
+
+
+const float PERSPECTIVE_CORRECTION[] = { 0.0f, 0.0f, -0.5f } ;
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -52,16 +56,24 @@ GLuint vertex_shader;
 GLuint fragment_shader;
 GLuint program;
 
+GLuint projectionMatrixId;
+GLuint viewMatrixId;
+GLuint modelMatrixId;
 GLchar errormsg[ERRORMSG_MAX_LENGTH];
+
+float ball_speed_vector[] = { -0.5f,  0.1f, -1.3f };
 
 const GLchar* vertex_shader_source = "#version 430 core\n \
 in vec3 in_Position;\n \
 uniform mat4 projectionMatrix;\n \
 uniform mat4 viewMatrix;\n \
 uniform mat4 modelMatrix;\n \
+uniform mat4 m2;\n \
+uniform mat4 m3;\n \
 void main(void) {\n \
-  vec4 pos = modelMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0);\n \
-  gl_Position = viewMatrix * projectionMatrix * pos;\n \
+  vec4 pos =  modelMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0);\n \
+  pos = viewMatrix * m2 * m3 * pos;\n \
+  gl_Position = projectionMatrix * pos;\n \
 }";
 
 const GLchar* fragment_shader_source = "#version 430 core\n \
@@ -74,9 +86,6 @@ void main(void) {\n \
 float projection_matrix[16];
 float view_matrix[16];
 
-GLuint projectionMatrixId;
-GLuint viewMatrixId;
-GLuint modelMatrixId;
 
 int setup_screen(int width, int height) {
 
@@ -256,11 +265,38 @@ int setup_renderer(int width, int height) {
   create_vao(&stage);
 
   load_identity_matrix(view_matrix);
+  view_matrix[12] = PERSPECTIVE_CORRECTION[0];
+  view_matrix[13] = PERSPECTIVE_CORRECTION[1];
+  view_matrix[14] = PERSPECTIVE_CORRECTION[2];
   create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.0f, 100.0f, projection_matrix);
   projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
   viewMatrixId = glGetUniformLocation(program, "viewMatrix");
   modelMatrixId = glGetUniformLocation(program, "modelMatrix");
   glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
+
+  float m2[16];
+  float m3[16];
+ GLuint m2Id = glGetUniformLocation(program, "m2");
+ load_identity_matrix(m2);
+
+ float sine = (float)sin(M_PI_2);
+ float cosine = (float)cos(M_PI_2);
+
+
+ m2[0] = cosine;
+ m2[8] = sine;
+ m2[2] = -sine;
+ m2[10] = cosine;
+
+
+ GLuint m3Id = glGetUniformLocation(program, "m3");
+ load_identity_matrix(m3);
+ m3[12] = 2.5f;
+ m3[14] = 0.5f;
+
+
+  glUniformMatrix4fv(m2Id, 1, GL_FALSE, m2);
+  glUniformMatrix4fv(m3Id, 1, GL_FALSE, m3);
   glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
   return 0;
@@ -313,14 +349,13 @@ void setup_player_stick() {
   player_stick.x = 0.0f;
   player_stick.y = 0.0f;
   setup_stick(&player_stick);
-  player_stick.model_matrix[14] = -0.5f;
 }
 
 void setup_enemy_stick() {
   enemy_stick.x = 0.0f;
   enemy_stick.y = 0.0f;
   setup_stick(&enemy_stick);
-  enemy_stick.model_matrix[14] = -(STAGE_BLOCKS * 0.2f) - 0.5f;
+  enemy_stick.model_matrix[14] = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
 }
 
 void setup_stage() {
@@ -330,7 +365,7 @@ void setup_stage() {
 
   stage.width = 1.0f;
   stage.height = 1.0f / aspect;
-  stage.large = 0.2f;
+  stage.large = STAGE_BLOCK_LARGE;
 
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
   stage.elements = (int*)malloc(sizeof(int) * STAGE_INDICES_COUNT);
@@ -366,7 +401,6 @@ void setup_stage() {
       stage.elements[j + 5] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
   }
   load_identity_matrix(stage.model_matrix);
-  stage.model_matrix[14] = -0.5f;
 }
 
 void setup_ball() {
@@ -377,6 +411,7 @@ void setup_ball() {
   int vertex = 0;
   int index = 6;
   int m, p;
+  ball.width = 0.02f;
 
   ball.vertex = (float*)malloc(sizeof(float) * 3 * BALL_VERTICES_COUNT);
   ball.elements = (int*)malloc(sizeof(int) * BALL_INDICES_COUNT);
@@ -390,9 +425,9 @@ void setup_ball() {
   {
     for (m = 0, phi = 0.0f; m < BALL_SEGMENTS; m++, phi += UNIT_ANGLE)
     {
-      ball.vertex[vertex++] = cos(theta) * sin(phi) * 0.02f;
-      ball.vertex[vertex++] = sin(theta) * 0.02f;
-      ball.vertex[vertex++] = cos(theta) * cos(phi) * 0.02f;
+      ball.vertex[vertex++] = cos(theta) * sin(phi) * ball.width;
+      ball.vertex[vertex++] = sin(theta) * ball.width;
+      ball.vertex[vertex++] = cos(theta) * cos(phi) * ball.width;
     }
   }
   for (int i = 0, j = 0; i < (ball.vertex_count / 2); i++, j += 6) {
@@ -406,17 +441,16 @@ void setup_ball() {
   }
 
   load_identity_matrix(ball.model_matrix);
-  ball.model_matrix[14] = -0.5f;
+  ball.model_matrix[14] = -0.5f - ball.width;
 }
 void render_pong_element(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
   glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
   glDrawElements(GL_TRIANGLES, element->elements_count, GL_UNSIGNED_INT, 0);
-  //glDrawArrays(GL_POINTS, 0, element->vertex_count);
   glBindVertexArray(0);
 }
 void render() {
-
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   render_pong_element(&stage);
   render_pong_element(&player_stick);
   render_pong_element(&enemy_stick);
@@ -427,23 +461,62 @@ void render() {
 }
 void run_game() {
   int loop = 1;
+  unsigned int timeElapsed = 0;
+  unsigned int lastTime, currentTime = 0;
 
+  SDL_WarpMouseInWindow(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+
+  lastTime = SDL_GetTicks();
 	while (loop)
 	{
 		SDL_Event event;
-		SDL_PollEvent(&event);
+		if (SDL_PollEvent(&event)) {
+  		if (event.type == SDL_QUIT) {
+  			loop = 0;
+      } else if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+  				case SDLK_ESCAPE:
+  					loop = 0;
+  					break;
+  				default:
+  					break;
+  			}
+  		} else if (event.type == SDL_MOUSEMOTION) {
+          player_stick.x = (event.motion.x - (WINDOW_WIDTH >> 1)) / 650.0f;
+          player_stick.y = -(event.motion.y - (WINDOW_HEIGHT >> 1)) / 650.0f;
+          player_stick.model_matrix[12] = player_stick.x ;
+          player_stick.model_matrix[13] = player_stick.y;
+      }
+    }
 
-		if (event.type == SDL_QUIT) {
-			loop = 0;
-    } else if (event.type == SDL_KEYDOWN) {
-      switch (event.key.keysym.sym) {
-				case SDLK_ESCAPE:
-					loop = 0;
-					break;
-				default:
-					break;
-			}
-		}
+    if (ball.model_matrix[14] < -(STAGE_BLOCKS * stage.large - (ball.width / 2))) {
+       ball_speed_vector[2] *= -1.0f;
+    }
+    if (ball.model_matrix[14] > ((ball.width / 2))) {
+       ball_speed_vector[2] *= -1.0f;
+    }
+
+    if (ball.model_matrix[12] > ((stage.width / 2.0f) - (ball.width / 2))) {
+       ball_speed_vector[0] *= -1.0f;
+    }
+    if (ball.model_matrix[12] < ((-stage.width / 2.0f) + (ball.width / 2))) {
+       ball_speed_vector[0] *= -1.0f;
+    }
+    if (ball.model_matrix[13] >= ((stage.height / 2) - (ball.width / 2))) {
+       ball_speed_vector[1] *= -1.0f;
+    }
+    if (ball.model_matrix[13] <= ((-stage.height / 2) + (ball.width / 2))) {
+       ball_speed_vector[1] *= -1.0f;
+    }
+
+
+    currentTime = SDL_GetTicks();
+    timeElapsed = currentTime - lastTime;
+    lastTime = currentTime;
+    ball.model_matrix[12] += ball_speed_vector[0] * (timeElapsed / 1000.0f);
+    ball.model_matrix[13] += ball_speed_vector[1] * (timeElapsed / 1000.0f);
+    ball.model_matrix[14] += ball_speed_vector[2] * (timeElapsed / 1000.0f);
+
     render();
 	}
 }
