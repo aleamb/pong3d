@@ -18,10 +18,10 @@
 #define BALL_SEGMENTS 20
 
 #define STAGE_BLOCK_WIDTH 1.0f
-
 #define STAGE_BLOCK_LARGE (STAGE_BLOCK_WIDTH / 5.0f)
 #define STICK_WIDTH (STAGE_BLOCK_WIDTH / 6.0f)
 #define BALL_RADIUS (STAGE_BLOCK_WIDTH / 50.0f)
+#define VELOCITY_SAMPLE_F 0
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
@@ -31,6 +31,7 @@
 
 
 const float PERSPECTIVE_CORRECTION[] = { 0.0f, 0.0f, -0.55f } ;
+const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.0f, -1.3f };
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -43,6 +44,9 @@ typedef struct {
   float x;
   float y;
   float z;
+  float xprev;
+  float yprev;
+  float zprev;
   GLuint vao;
   GLuint vbo;
   GLuint ebo;
@@ -56,6 +60,8 @@ PONG_ELEMENT player_stick;
 PONG_ELEMENT enemy_stick;
 PONG_ELEMENT ball;
 PONG_ELEMENT stage;
+PONG_ELEMENT ball_shadow;
+PONG_ELEMENT stick_shadow;
 
 GLuint vertex_shader;
 GLuint fragment_shader;
@@ -66,7 +72,7 @@ GLuint viewMatrixId;
 GLuint modelMatrixId;
 GLchar errormsg[ERRORMSG_MAX_LENGTH];
 
-float ball_speed_vector[] = { -0.5f,  0.1f, -1.3f };
+float ball_speed_vector[3];
 
 const GLchar* vertex_shader_source = "#version 430 core\n \
 in vec3 in_Position;\n \
@@ -140,10 +146,11 @@ void create_vao(PONG_ELEMENT* element) {
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(0);
 
-  glGenBuffers(1, &element->ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(unsigned int), element->elements, GL_STATIC_DRAW);
-
+  if (element->elements_count > 0) {
+    glGenBuffers(1, &element->ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element->ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(unsigned int), element->elements, GL_STATIC_DRAW);
+  }
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }
@@ -268,6 +275,8 @@ int setup_renderer(int width, int height) {
   create_vao(&enemy_stick);
   create_vao(&ball);
   create_vao(&stage);
+  create_vao(&ball_shadow);
+  create_vao(&stick_shadow);
 
   load_identity_matrix(view_matrix);
   view_matrix[12] = PERSPECTIVE_CORRECTION[0];
@@ -420,11 +429,121 @@ void setup_ball() {
   load_identity_matrix(ball.model_matrix);
   ball.model_matrix[14] = - ball.width / 2.0f;
 }
+void setup_ball_shadow() {
+  ball_shadow.vertex = (float*)malloc(sizeof(float) * 3 * (BALL_SEGMENTS + 1));
+  ball_shadow.vertex_count = (BALL_SEGMENTS + 1);
+  ball_shadow.elements_count = 0;
+  int vertex = 3;
+  int elements = 1;
+  int p;
+  float theta;
+  ball_shadow.width = BALL_RADIUS;
+  ball_shadow.vertex[0] = 0.0f;
+  ball_shadow.vertex[1] = 0.0f;
+  ball_shadow.vertex[2] = 0.0f;
+  for (p = 0, theta = -M_PI_2; p < BALL_SEGMENTS; p++, theta += UNIT_ANGLE) {
+        ball_shadow.vertex[vertex++] = 0.0f;
+        ball_shadow.vertex[vertex++] = sin(theta) * ball_shadow.width;
+        ball_shadow.vertex[vertex++] = cos(theta) * ball_shadow.width;
+  }
+  load_identity_matrix(ball_shadow.model_matrix);
+}
+void setup_stick_shadows() {
+  int elements[] = {0, 1, 2, 0, 2, 3};
+  stick_shadow.vertex = (float*)malloc(sizeof(float) * 12);
+  stick_shadow.elements = (int*)malloc(sizeof(int) * 6);
+  stick_shadow.vertex_count = 4;
+  stick_shadow.elements_count = 6;
+  stick_shadow.width = STICK_WIDTH ;
+  stick_shadow.height = STAGE_BLOCK_WIDTH / 50;
+
+  stick_shadow.vertex[0] = -stick_shadow.width / 2.0f;
+  stick_shadow.vertex[1] = -stick_shadow.height / 2.0f;
+  stick_shadow.vertex[2] = 0.0f;
+
+  stick_shadow.vertex[3] = -stick_shadow.width / 2.0f;
+  stick_shadow.vertex[4] = stick_shadow.height / 2.0f;
+  stick_shadow.vertex[5] = 0.0f;
+
+  stick_shadow.vertex[6] = stick_shadow.width / 2.0f;
+  stick_shadow.vertex[7] = stick_shadow.height / 2.0f;
+  stick_shadow.vertex[8] = 0.0f;
+
+  stick_shadow.vertex[9] = stick_shadow.width / 2.0f;
+  stick_shadow.vertex[10] = -stick_shadow.height / 2.0f;
+  stick_shadow.vertex[11] = 0.0f;
+  memcpy(stick_shadow.elements, elements, sizeof(elements));
+  load_identity_matrix(stick_shadow.model_matrix);
+}
+
 void render_pong_element(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
   glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
-  glDrawElements(GL_TRIANGLES, element->elements_count, GL_UNSIGNED_INT, 0);
+  if (element->elements_count > 0) {
+    glDrawElements(GL_TRIANGLES, element->elements_count, GL_UNSIGNED_INT, 0);
+  } else {
+    glDrawArrays(GL_TRIANGLES, 0, element->vertex_count);
+  }
   glBindVertexArray(0);
+}
+void render_shadows(PONG_ELEMENT* stage, PONG_ELEMENT* ball, PONG_ELEMENT* stick) {
+
+    ball_shadow.model_matrix[0] = 1.0f;
+    ball_shadow.model_matrix[1] = 0.0f;
+    ball_shadow.model_matrix[4] = 0.0f;
+    ball_shadow.model_matrix[5] = 1.0f;
+
+    ball_shadow.model_matrix[12] = -stage->width / 2.0f;
+    ball_shadow.model_matrix[13] = ball->model_matrix[13];
+    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    render_pong_element(&ball_shadow);
+
+    ball_shadow.model_matrix[12] = stage->width / 2.0f;
+    ball_shadow.model_matrix[13] = ball->model_matrix[13];
+    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    render_pong_element(&ball_shadow);
+
+    ball_shadow.model_matrix[0] = 0.0f;
+    ball_shadow.model_matrix[1] = 1.0f;
+    ball_shadow.model_matrix[4] = -1.0f;
+    ball_shadow.model_matrix[5] = 0.0f;
+
+    ball_shadow.model_matrix[12] = ball->model_matrix[12];
+    ball_shadow.model_matrix[13] = -stage->height / 2.0f;
+    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    render_pong_element(&ball_shadow);
+
+    ball_shadow.model_matrix[12] = ball->model_matrix[12];
+    ball_shadow.model_matrix[13] = stage->height / 2.0f;
+    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    render_pong_element(&ball_shadow);
+
+    stick_shadow.model_matrix[0] = 1.0f;
+    stick_shadow.model_matrix[1] = 0.0f;
+    stick_shadow.model_matrix[4] = 0.0f;
+    stick_shadow.model_matrix[5] = 1.0f;
+
+    stick_shadow.model_matrix[12] = stick->model_matrix[12];
+    stick_shadow.model_matrix[13] = -stage->height / 2.0f;
+    render_pong_element(&stick_shadow);
+
+    stick_shadow.model_matrix[12] = stick->model_matrix[12];
+    stick_shadow.model_matrix[13] = stage->height / 2.0f;
+    render_pong_element(&stick_shadow);
+
+    stick_shadow.model_matrix[0] = 0.0f;
+    stick_shadow.model_matrix[1] = 1.0f;
+    stick_shadow.model_matrix[4] = -1.0f;
+    stick_shadow.model_matrix[5] = 0.0f;
+
+    stick_shadow.model_matrix[12] = -stage->width / 2.0f;
+    stick_shadow.model_matrix[13] = stick->model_matrix[13];
+    render_pong_element(&stick_shadow);
+
+    stick_shadow.model_matrix[12] = stage->width / 2.0f;
+    stick_shadow.model_matrix[13] = stick->model_matrix[13];
+    render_pong_element(&stick_shadow);
+
 }
 void render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -432,21 +551,39 @@ void render() {
   render_pong_element(&player_stick);
   render_pong_element(&enemy_stick);
   render_pong_element(&ball);
-
-
+  render_shadows(&stage, &ball, &player_stick);
   SDL_GL_SwapWindow(window);
 }
+
 void run_game() {
   int loop = 1;
   unsigned int timeElapsed = 0;
-  unsigned int lastTime, currentTime = 0;
+  unsigned int lastTime, currentTime, velocity_sample_time = 0;
 
   SDL_WarpMouseInWindow(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
   lastTime = SDL_GetTicks();
+  velocity_sample_time = lastTime;
+
+  player_stick.xprev = 0.0f;
+  player_stick.yprev = 0.0f;
+
+  memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
+
 	while (loop)
 	{
 		SDL_Event event;
+
+    currentTime = SDL_GetTicks();
+    timeElapsed = currentTime - lastTime;
+    lastTime = currentTime;
+
+    if ((currentTime - velocity_sample_time) > VELOCITY_SAMPLE_F) {
+      player_stick.xprev = player_stick.x;
+      player_stick.yprev = player_stick.y;
+      velocity_sample_time = currentTime;
+    }
+
 		if (SDL_PollEvent(&event)) {
   		if (event.type == SDL_QUIT) {
   			loop = 0;
@@ -459,18 +596,33 @@ void run_game() {
   					break;
   			}
   		} else if (event.type == SDL_MOUSEMOTION) {
-          player_stick.x = (event.motion.x - (WINDOW_WIDTH >> 1)) / 650.0f;
-          player_stick.y = -(event.motion.y - (WINDOW_HEIGHT >> 1)) / 650.0f;
-          player_stick.model_matrix[12] = player_stick.x ;
+          player_stick.x = (event.motion.x - (WINDOW_WIDTH >> 1)) * 0.00168;
+          player_stick.y = -(event.motion.y - (WINDOW_HEIGHT >> 1)) * 0.00168;
+          player_stick.model_matrix[12] = player_stick.x;
           player_stick.model_matrix[13] = player_stick.y;
       }
     }
 
-    if (ball.model_matrix[14] < -(STAGE_BLOCKS * stage.large - (ball.width / 2))) {
-       ball_speed_vector[2] *= -1.0f;
+    if (ball.model_matrix[14] < -(STAGE_BLOCKS * stage.large + (ball.width / 2.0f))) {
+        ball_speed_vector[2] *= -1.0f;
     }
-    if (ball.model_matrix[14] > ((ball.width / 2))) {
-       ball_speed_vector[2] *= -1.0f;
+    if (ball.model_matrix[14] > -(((ball.width / 2.0f))    )) {
+      if (
+        (ball.model_matrix[12] > (player_stick.x - player_stick.width / 2.0f))
+        &&
+        (ball.model_matrix[12] < (player_stick.x + player_stick.width / 2.0f))
+        &&
+        (ball.model_matrix[13] > (player_stick.y - player_stick.height / 2.0f))
+        &&
+        (ball.model_matrix[13] < (player_stick.y + player_stick.height / 2.0f))) {
+
+          ball_speed_vector[0] += (float)(player_stick.x - player_stick.xprev);
+          ball_speed_vector[1] += (float)(player_stick.y - player_stick.yprev);
+          ball_speed_vector[2] *= -1.0f;
+        }
+        else {
+          ball.model_matrix[14] = -1.0f;
+        }
     }
 
     if (ball.model_matrix[12] > ((stage.width / 2.0f) - (ball.width / 2))) {
@@ -487,9 +639,7 @@ void run_game() {
     }
 
 
-    currentTime = SDL_GetTicks();
-    timeElapsed = currentTime - lastTime;
-    lastTime = currentTime;
+
     ball.model_matrix[12] += ball_speed_vector[0] * (timeElapsed / 1000.0f);
     ball.model_matrix[13] += ball_speed_vector[1] * (timeElapsed / 1000.0f);
     ball.model_matrix[14] += ball_speed_vector[2] * (timeElapsed / 1000.0f);
@@ -500,7 +650,9 @@ void run_game() {
 
 void free_pong_element(PONG_ELEMENT* element) {
   free(element->vertex);
-  free(element->elements);
+  if (element->elements_count > 0) {
+    free(element->elements);
+  }
 }
 
 void dispose_game_elements() {
@@ -508,6 +660,8 @@ void dispose_game_elements() {
   free_pong_element(&enemy_stick);
   free_pong_element(&ball);
   free_pong_element(&stage);
+  free_pong_element(&ball_shadow);
+  free_pong_element(&stick_shadow);
 }
 void dispose_screen() {
   SDL_GL_DeleteContext(mainContext);
@@ -516,7 +670,9 @@ void dispose_screen() {
 
 void dispose_game_element_render(PONG_ELEMENT* element) {
   glDeleteBuffers(1, &element->vbo);
-  glDeleteBuffers(1, &element->ebo);
+  if (element->elements_count > 0) {
+    glDeleteBuffers(1, &element->ebo);
+  }
   glDeleteVertexArrays(1, &element->vao);
 }
 
@@ -531,6 +687,8 @@ void dispose_renderer() {
   dispose_game_element_render(&enemy_stick);
   dispose_game_element_render(&ball);
   dispose_game_element_render(&stage);
+  dispose_game_element_render(&ball_shadow);
+  dispose_game_element_render(&stick_shadow);
 }
 
 void cleanup() {
@@ -547,6 +705,8 @@ int main(int argc, char** argv[]) {
   setup_player_stick();
   setup_enemy_stick();
   setup_ball();
+  setup_ball_shadow();
+  setup_stick_shadows();
   // setup_game();
   setup_renderer(WINDOW_WIDTH, WINDOW_HEIGHT);
   run_game();
