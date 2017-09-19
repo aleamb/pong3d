@@ -4,6 +4,7 @@
 #include <math.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
+#include <GL/glu.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -21,7 +22,7 @@
 #define STAGE_BLOCK_LARGE (STAGE_BLOCK_WIDTH / 5.0f)
 #define STICK_WIDTH (STAGE_BLOCK_WIDTH / 6.0f)
 #define BALL_RADIUS (STAGE_BLOCK_WIDTH / 50.0f)
-#define VELOCITY_SAMPLE_F 0
+#define VELOCITY_SAMPLE_F 700
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
@@ -29,9 +30,10 @@
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define UNIT_ANGLE (6.283185307f / BALL_SEGMENTS)
 
+const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.05f, -1.3f };
+const float OPP_STICK_RETURN_SPEED_VECTOR[] = { -0.1f,  0.1f, 0.0f };
+const float OPP_STICK_SPEED_VECTOR[] = { -0.15f,  0.15f, 0.0f };
 
-const float PERSPECTIVE_CORRECTION[] = { 0.0f, 0.0f, -0.55f } ;
-const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.0f, -1.3f };
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -47,6 +49,8 @@ typedef struct {
   float xprev;
   float yprev;
   float zprev;
+  float wx;
+  float wy;
   GLuint vao;
   GLuint vbo;
   GLuint ebo;
@@ -70,6 +74,7 @@ GLuint program;
 GLuint projectionMatrixId;
 GLuint viewMatrixId;
 GLuint modelMatrixId;
+GLuint projectionFlagId;
 GLchar errormsg[ERRORMSG_MAX_LENGTH];
 
 float ball_speed_vector[3];
@@ -79,12 +84,10 @@ in vec3 in_Position;\n \
 uniform mat4 projectionMatrix;\n \
 uniform mat4 viewMatrix;\n \
 uniform mat4 modelMatrix;\n \
-uniform mat4 m2;\n \
-uniform mat4 m3;\n \
 void main(void) {\n \
   vec4 pos =  modelMatrix * vec4(in_Position.x, in_Position.y , in_Position.z, 1.0);\n \
   pos = viewMatrix * pos;\n \
-  gl_Position = projectionMatrix * pos;\n \
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_Position, 1.0);\n \
 }";
 
 const GLchar* fragment_shader_source = "#version 430 core\n \
@@ -95,6 +98,7 @@ void main(void) {\n \
 }";
 
 float projection_matrix[16];
+float ortho_projection[16];
 float view_matrix[16];
 
 
@@ -119,6 +123,8 @@ int setup_screen(int width, int height) {
     fprintf( stderr, "GL context creation failed: %s\n", SDL_GetError( ) );
     return -1;
   }
+
+  SDL_ShowCursor(SDL_DISABLE);
 
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
@@ -217,6 +223,44 @@ void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, 
   out[14] = -((2 * near_plane * far_plane) / frustum_length);
 }
 
+void create_ortho_matrix(float left, float right, float bottom, float top, float near, float far, float* out) {
+  out[0] = 2.0f / (right - left);
+  out[1] = 0.0f;
+  out[2] = 0.0f;
+  out[3] = 0.0f;
+  out[4] = 0.0f;
+  out[5] = 2.0f / (top - bottom);
+  out[6] = 0.0f;
+  out[7] = 0.0f;
+  out[8] = 0.0f;
+  out[9] = 0.0f;
+  out[10] = -2.0f / (far - near);
+  out[11] = 0.0f;
+  out[12] = - ((right + left) / (right - left));
+  out[13] = - ((top + bottom) / (top - bottom));
+  out[14] = -((far + near) / (far - near));
+  out[15] = 1.0f;
+}
+
+
+void create_frustum(float left, float right, float bottom, float top, float near, float far, float* out) {
+  out[0] = (2.0f * near) / (right - left);
+  out[1] = 0.0f;
+  out[2] = 0.0f;
+  out[3] = 0.0f;
+  out[4] = 0.0f;
+  out[5] = (2.0f * near) / (top - bottom);
+  out[6] = 0.0f;
+  out[7] = 0.0f;
+  out[8] = (right + left) / (right - left);
+  out[9] = (top + bottom) / (top - bottom);
+  out[10] = -((far + near) / (far - near));
+  out[11] = -1.0f;
+  out[12] = 0.0f;
+  out[13] = 0.0f;
+  out[14] = (2.0f * far * near) / (far - near);
+  out[15] = 0.0f;
+}
 void load_identity_matrix(float *out) {
 
   out[0] = 1.0f;
@@ -279,13 +323,13 @@ int setup_renderer(int width, int height) {
   create_vao(&stick_shadow);
 
   load_identity_matrix(view_matrix);
-  view_matrix[12] = PERSPECTIVE_CORRECTION[0];
-  view_matrix[13] = PERSPECTIVE_CORRECTION[1];
-  view_matrix[14] = PERSPECTIVE_CORRECTION[2];
-  create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.0f, 100.0f, projection_matrix);
+  // perspective Z compensation: 0.5 / tan(fov / 2) / aspect
+  view_matrix[14] = -0.866f / ((float)WINDOW_WIDTH / WINDOW_HEIGHT);
+  create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.001f, 10.0f, projection_matrix);
   projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
   viewMatrixId = glGetUniformLocation(program, "viewMatrix");
   modelMatrixId = glGetUniformLocation(program, "modelMatrix");
+  projectionFlagId = glGetUniformLocation(program, "project");
   glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
   glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
@@ -310,19 +354,19 @@ void setup_stick(PONG_ELEMENT* stick) {
   stick->elements_count = 6;
   stick->vertex[0] = -width2;
   stick->vertex[1] = -height2;
-  stick->vertex[2] = 0.0f;
+  stick->vertex[2] = stick->z;
 
   stick->vertex[3] = -width2;
   stick->vertex[4] = height2;
-  stick->vertex[5] = 0.0f;
+  stick->vertex[5] = stick->z;
 
   stick->vertex[6] = width2;
   stick->vertex[7] = height2;
-  stick->vertex[8] = 0.0f;
+  stick->vertex[8] = stick->z;
 
   stick->vertex[9] = width2;
   stick->vertex[10] = -height2;
-  stick->vertex[11] = 0.0f;
+  stick->vertex[11] = stick->z;
 
   stick->elements[0] = 0;
   stick->elements[1] = 1;
@@ -336,23 +380,26 @@ void setup_stick(PONG_ELEMENT* stick) {
 }
 
 void setup_player_stick() {
+  player_stick.z = -STAGE_BLOCK_WIDTH / 50.0f;
   setup_stick(&player_stick);
 }
 
 void setup_enemy_stick() {
+  enemy_stick.z = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
   setup_stick(&enemy_stick);
-  enemy_stick.model_matrix[14] = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
 }
 
 void setup_stage() {
 
   int vertex = 0;
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
-
+  float x_width, y_height;
   stage.width = STAGE_BLOCK_WIDTH;
   stage.height = STAGE_BLOCK_WIDTH / aspect;
   stage.large = STAGE_BLOCK_LARGE;
 
+  x_width = stage.width / 2.0f;
+  y_height = stage.height / 2.0f;
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
   stage.elements = (int*)malloc(sizeof(int) * STAGE_INDICES_COUNT);
 
@@ -360,21 +407,22 @@ void setup_stage() {
   stage.elements_count = STAGE_INDICES_COUNT;
 
   for (int i = 0; i <= STAGE_BLOCKS; i++) {
-    stage.vertex[vertex++] = -stage.width / 2.0;
-    stage.vertex[vertex++] = stage.height / 2.0;
-    stage.vertex[vertex++] = (-stage.large * (float)i);
+    float z_depth  = (-stage.large * (float)i);
+    stage.vertex[vertex++] = -x_width;
+    stage.vertex[vertex++] = y_height;
+    stage.vertex[vertex++] = z_depth;
 
-    stage.vertex[vertex++] = stage.width / 2.0;
-    stage.vertex[vertex++] = stage.height / 2.0;
-    stage.vertex[vertex++] = (-stage.large * (float)i);
+    stage.vertex[vertex++] = x_width;
+    stage.vertex[vertex++] = y_height;
+    stage.vertex[vertex++] = z_depth;
 
-    stage.vertex[vertex++] = stage.width / 2.0;
-    stage.vertex[vertex++] = -stage.height / 2.0;
-    stage.vertex[vertex++] = (-stage.large * (float)i);
+    stage.vertex[vertex++] = x_width;
+    stage.vertex[vertex++] = -y_height;
+    stage.vertex[vertex++] = z_depth;
 
-    stage.vertex[vertex++] = -stage.width / 2.0;
-    stage.vertex[vertex++] = -stage.height / 2.0;
-    stage.vertex[vertex++] = (-stage.large * (float)i);
+    stage.vertex[vertex++] = -x_width;
+    stage.vertex[vertex++] = -y_height;
+    stage.vertex[vertex++] =  z_depth;
   }
 
   for (int i = 0, j = 0; i < (STAGE_VERTICES_COUNT - 4); i++, j += 6) {
@@ -427,7 +475,7 @@ void setup_ball() {
   }
 
   load_identity_matrix(ball.model_matrix);
-  ball.model_matrix[14] = - ball.width / 2.0f;
+  ball.model_matrix[14] = -1.0f;
 }
 void setup_ball_shadow() {
   ball_shadow.vertex = (float*)malloc(sizeof(float) * 3 * (BALL_SEGMENTS + 1));
@@ -449,6 +497,7 @@ void setup_ball_shadow() {
   load_identity_matrix(ball_shadow.model_matrix);
 }
 void setup_stick_shadows() {
+
   int elements[] = {0, 1, 2, 0, 2, 3};
   stick_shadow.vertex = (float*)malloc(sizeof(float) * 12);
   stick_shadow.elements = (int*)malloc(sizeof(int) * 6);
@@ -456,22 +505,23 @@ void setup_stick_shadows() {
   stick_shadow.elements_count = 6;
   stick_shadow.width = STICK_WIDTH ;
   stick_shadow.height = STAGE_BLOCK_WIDTH / 50;
+  stick_shadow.z = -STAGE_BLOCK_WIDTH / 50;
 
   stick_shadow.vertex[0] = -stick_shadow.width / 2.0f;
   stick_shadow.vertex[1] = -stick_shadow.height / 2.0f;
-  stick_shadow.vertex[2] = 0.0f;
+  stick_shadow.vertex[2] =  stick_shadow.z;
 
   stick_shadow.vertex[3] = -stick_shadow.width / 2.0f;
   stick_shadow.vertex[4] = stick_shadow.height / 2.0f;
-  stick_shadow.vertex[5] = 0.0f;
+  stick_shadow.vertex[5] = stick_shadow.z;
 
   stick_shadow.vertex[6] = stick_shadow.width / 2.0f;
   stick_shadow.vertex[7] = stick_shadow.height / 2.0f;
-  stick_shadow.vertex[8] = 0.0f;
+  stick_shadow.vertex[8] = stick_shadow.z;
 
   stick_shadow.vertex[9] = stick_shadow.width / 2.0f;
   stick_shadow.vertex[10] = -stick_shadow.height / 2.0f;
-  stick_shadow.vertex[11] = 0.0f;
+  stick_shadow.vertex[11] = stick_shadow.z;
   memcpy(stick_shadow.elements, elements, sizeof(elements));
   load_identity_matrix(stick_shadow.model_matrix);
 }
@@ -548,21 +598,56 @@ void render_shadows(PONG_ELEMENT* stage, PONG_ELEMENT* ball, PONG_ELEMENT* stick
 void render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   render_pong_element(&stage);
-  render_pong_element(&player_stick);
   render_pong_element(&enemy_stick);
-  render_pong_element(&ball);
   render_shadows(&stage, &ball, &player_stick);
+  render_pong_element(&ball);
+  render_pong_element(&player_stick);
   SDL_GL_SwapWindow(window);
 }
 
+
+int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* stick) {
+  return (
+    (((ball_x - ball_width) < (stick->x + stick->width / 2.0f))
+    &&
+    ((ball_x + ball_width) > (stick->x - stick->width / 2.0f)))
+    &&
+    (((ball_y - ball_width) < (stick->y + stick->height / 2.0f))
+    &&
+    ((ball_y + ball_width) > (stick->y - stick->height / 2.0f))));
+}
 void run_game() {
   int loop = 1;
   unsigned int timeElapsed = 0;
   unsigned int lastTime, currentTime, velocity_sample_time = 0;
+  int p = 0;
+  int mouse_x, mouse_y;
+  int hit_counter = 0;
+  int ball_calc_time_skip = 0;
 
+  float slope, slope2;
+  float rv, rv2;
+
+  int state = 1;
+
+  float to_position[2];
+  float opp_vel[2];
+  float unit[2];
+
+enemy_stick.x = 0.0f;
+enemy_stick.y = 0.0f;
+  ball.model_matrix[12] = 0.0f;
+  ball.model_matrix[13] = 0.0f;
+  ball.model_matrix[14] = player_stick.z - ball.width;
+
+  float ball_x = ball.model_matrix[12];
+  float ball_y = ball.model_matrix[13];
+  float ball_z = ball.model_matrix[14];
+
+  SDL_Event event;
   SDL_WarpMouseInWindow(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
-  lastTime = SDL_GetTicks();
+  currentTime = lastTime = 0;
   velocity_sample_time = lastTime;
 
   player_stick.xprev = 0.0f;
@@ -572,77 +657,122 @@ void run_game() {
 
 	while (loop)
 	{
-		SDL_Event event;
-
     currentTime = SDL_GetTicks();
     timeElapsed = currentTime - lastTime;
     lastTime = currentTime;
 
-    if ((currentTime - velocity_sample_time) > VELOCITY_SAMPLE_F) {
-      player_stick.xprev = player_stick.x;
-      player_stick.yprev = player_stick.y;
-      velocity_sample_time = currentTime;
-    }
-
-		if (SDL_PollEvent(&event)) {
-  		if (event.type == SDL_QUIT) {
-  			loop = 0;
+    if (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        loop = 0;
       } else if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
-  				case SDLK_ESCAPE:
-  					loop = 0;
-  					break;
-  				default:
-  					break;
-  			}
-  		} else if (event.type == SDL_MOUSEMOTION) {
-          player_stick.x = (event.motion.x - (WINDOW_WIDTH >> 1)) * 0.00168;
-          player_stick.y = -(event.motion.y - (WINDOW_HEIGHT >> 1)) * 0.00168;
-          player_stick.model_matrix[12] = player_stick.x;
-          player_stick.model_matrix[13] = player_stick.y;
+          case SDLK_ESCAPE:
+            loop = 0;
+            break;
+          default:
+            break;
+        }
+      } else if (event.type == SDL_MOUSEMOTION) {
+            player_stick.wx = event.motion.x;
+            player_stick.wy = -event.motion.y;
+            player_stick.x = (player_stick.wx - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH;
+            player_stick.y = (player_stick.wy + (WINDOW_HEIGHT >> 1)) / (float)WINDOW_HEIGHT;
+            player_stick.model_matrix[12] = player_stick.x;
+            player_stick.model_matrix[13] = player_stick.y;
+      } else if (event.type == SDL_MOUSEBUTTONUP && state == 1) {
+
+          if (ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
+            state = 2;
+          }
       }
     }
 
-    if (ball.model_matrix[14] < -(STAGE_BLOCKS * stage.large + (ball.width / 2.0f))) {
-        ball_speed_vector[2] *= -1.0f;
-    }
-    if (ball.model_matrix[14] > -(((ball.width / 2.0f))    )) {
-      if (
-        (ball.model_matrix[12] > (player_stick.x - player_stick.width / 2.0f))
-        &&
-        (ball.model_matrix[12] < (player_stick.x + player_stick.width / 2.0f))
-        &&
-        (ball.model_matrix[13] > (player_stick.y - player_stick.height / 2.0f))
-        &&
-        (ball.model_matrix[13] < (player_stick.y + player_stick.height / 2.0f))) {
+    if (state == 2) {
 
-          ball_speed_vector[0] += (float)(player_stick.x - player_stick.xprev);
-          ball_speed_vector[1] += (float)(player_stick.y - player_stick.yprev);
-          ball_speed_vector[2] *= -1.0f;
+      if (ball_speed_vector[2] > 0) {
+        ball_speed_vector[2] += 0.00007;
+      } else {
+        ball_speed_vector[2] -= 0.00007;
+      }
+
+      ball_x += ball_speed_vector[0] * (timeElapsed / 1000.0f);
+      ball_y += ball_speed_vector[1] * (timeElapsed / 1000.0f);
+      ball_z += ball_speed_vector[2] * (timeElapsed / 1000.0f);
+    }
+    if (state == 2) {
+          if ((currentTime - velocity_sample_time) > VELOCITY_SAMPLE_F) {
+            player_stick.xprev = player_stick.x;
+            player_stick.yprev = player_stick.y;
+            velocity_sample_time = currentTime;
+          }
+
+
+      if ((ball_z - ball.width) < enemy_stick.z) {
+
+          if (ball_in_stick(ball_x, ball_y, ball.width, &enemy_stick)) {
+              ball_speed_vector[2] *= -1.0f;
+              slope = -enemy_stick.y / -enemy_stick.x;
+              if (enemy_stick.x >= 0) {
+                  rv = -0.3f;
+              } else {
+                rv = 0.3f;
+              }
+          } else {
+            state = 3;
+          }
+      } else if ((ball_z + ball.width) >= player_stick.z && (ball_z - ball.width) <= player_stick.z) {
+
+        if (ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
+              ball_speed_vector[2] *= -1.0f;
+              ball_speed_vector[0] += (player_stick.x - player_stick.xprev);
+              ball_speed_vector[1] += (player_stick.y - player_stick.yprev);
+              ball_z = player_stick.z - ball.width - 0.01;
+        } else if ((ball_z - ball.width) > -view_matrix[14]) {
+          p = 1;
         }
-        else {
-          ball.model_matrix[14] = -1.0f;
-        }
-    }
+      }
 
-    if (ball.model_matrix[12] > ((stage.width / 2.0f) - (ball.width / 2))) {
-       ball_speed_vector[0] *= -1.0f;
-    }
-    if (ball.model_matrix[12] < ((-stage.width / 2.0f) + (ball.width / 2))) {
-       ball_speed_vector[0] *= -1.0f;
-    }
-    if (ball.model_matrix[13] > ((stage.height / 2) - (ball.width / 2))) {
-       ball_speed_vector[1] *= -1.0f;
-    }
-    if (ball.model_matrix[13] < ((-stage.height / 2) + (ball.width / 2))) {
-       ball_speed_vector[1] *= -1.0f;
-    }
+      if (ball_x > ((stage.width / 2.0f) - (ball.width))) {
+         ball_speed_vector[0] *= -1.0f;
+      }
+      else if (ball_x < ((-stage.width / 2.0f) + (ball.width))) {
+         ball_speed_vector[0] *= -1.0f;
+      }
 
+      if (ball_y > ((stage.height / 2) - (ball.width))) {
+         ball_speed_vector[1] *= -1.0f;
+      }
+      if (ball_y < ((-stage.height / 2) + (ball.width))) {
+         ball_speed_vector[1] *= -1.0f;
+      }
 
+      ball.model_matrix[12] = ball_x;
+      ball.model_matrix[13] = ball_y;
+      ball.model_matrix[14] = ball_z;
 
-    ball.model_matrix[12] += ball_speed_vector[0] * (timeElapsed / 1000.0f);
-    ball.model_matrix[13] += ball_speed_vector[1] * (timeElapsed / 1000.0f);
-    ball.model_matrix[14] += ball_speed_vector[2] * (timeElapsed / 1000.0f);
+      if (ball_speed_vector[2] > 0.0f && enemy_stick.x < 0.0f) {
+        enemy_stick.x += rv * (timeElapsed / 1000.0f);
+        enemy_stick.y = enemy_stick.x * slope;
+        enemy_stick.model_matrix[12] = enemy_stick.x;
+        enemy_stick.model_matrix[13] = enemy_stick.y;
+
+      } else if (ball_speed_vector[2] < 0.0f) {
+          if ((currentTime - ball_calc_time_skip) > 200) {
+            ball_calc_time_skip = currentTime;
+            to_position[0] = ball_x - enemy_stick.x;
+            to_position[1] = ball_y - enemy_stick.y ;
+
+            opp_vel[0] = (to_position[0] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
+            opp_vel[1] = (to_position[1] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
+
+          }
+
+          enemy_stick.x += (opp_vel[0] * (timeElapsed / 1000.0f));
+          enemy_stick.y += (opp_vel[1] * (timeElapsed / 1000.0f));
+          enemy_stick.model_matrix[12] = enemy_stick.x;
+          enemy_stick.model_matrix[13] = enemy_stick.y;
+      }
+    }
 
     render();
 	}
