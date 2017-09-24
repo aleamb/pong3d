@@ -22,13 +22,15 @@
 #define STAGE_BLOCK_LARGE (STAGE_BLOCK_WIDTH / 5.0f)
 #define STICK_WIDTH (STAGE_BLOCK_WIDTH / 6.0f)
 #define BALL_RADIUS (STAGE_BLOCK_WIDTH / 50.0f)
-#define VELOCITY_SAMPLE_F 700
+#define VELOCITY_SAMPLE_F 550
+#define OPPONENT_SAMPLE_ADJUST 80
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
-#define UNIT_ANGLE (6.283185307f / BALL_SEGMENTS)
+#define P_2PI 6.283185307f
+#define UNIT_ANGLE (P_2PI / BALL_SEGMENTS)
 
 const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.05f, -1.3f };
 const float OPP_STICK_RETURN_SPEED_VECTOR[] = { -0.1f,  0.1f, 0.0f };
@@ -100,6 +102,17 @@ void main(void) {\n \
 float projection_matrix[16];
 float ortho_projection[16];
 float view_matrix[16];
+
+SDL_AudioSpec want, have;
+SDL_AudioDeviceID dev;
+
+float* player_pong_sound;
+float* opponent_pong_sound;
+float* start_sound;
+float* player_score_sound;
+float* opp_score_sound;
+
+void audio_callback(void*, Uint8*, int);
 
 
 int setup_screen(int width, int height) {
@@ -655,44 +668,25 @@ enemy_stick.y = 0.0f;
 
   memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
 
+
+
+
 	while (loop)
 	{
+
     currentTime = SDL_GetTicks();
+
     timeElapsed = currentTime - lastTime;
     lastTime = currentTime;
 
-    if (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT) {
-        loop = 0;
-      } else if (event.type == SDL_KEYDOWN) {
-        switch (event.key.keysym.sym) {
-          case SDLK_ESCAPE:
-            loop = 0;
-            break;
-          default:
-            break;
-        }
-      } else if (event.type == SDL_MOUSEMOTION) {
-            player_stick.wx = event.motion.x;
-            player_stick.wy = -event.motion.y;
-            player_stick.x = (player_stick.wx - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH;
-            player_stick.y = (player_stick.wy + (WINDOW_HEIGHT >> 1)) / (float)WINDOW_HEIGHT;
-            player_stick.model_matrix[12] = player_stick.x;
-            player_stick.model_matrix[13] = player_stick.y;
-      } else if (event.type == SDL_MOUSEBUTTONUP && state == 1) {
 
-          if (ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
-            state = 2;
-          }
-      }
-    }
 
     if (state == 2) {
 
       if (ball_speed_vector[2] > 0) {
-        ball_speed_vector[2] += 0.00007;
+        ball_speed_vector[2] += 0.00006;
       } else {
-        ball_speed_vector[2] -= 0.00007;
+        ball_speed_vector[2] -= 0.00006;
       }
 
       ball_x += ball_speed_vector[0] * (timeElapsed / 1000.0f);
@@ -724,9 +718,12 @@ enemy_stick.y = 0.0f;
 
         if (ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
               ball_speed_vector[2] *= -1.0f;
-              ball_speed_vector[0] += (player_stick.x - player_stick.xprev);
-              ball_speed_vector[1] += (player_stick.y - player_stick.yprev);
+              ball_speed_vector[0] += (player_stick.x - player_stick.xprev) / (VELOCITY_SAMPLE_F / 1000.0f);
+              ball_speed_vector[1] += (player_stick.y - player_stick.yprev) / (VELOCITY_SAMPLE_F / 1000.0f);
+            //  ball_speed_vector[0] += (player_stick.x + ball_x);
+              //ball_speed_vector[1] += (player_stick.y - ball_y);
               ball_z = player_stick.z - ball.width - 0.01;
+              SDL_QueueAudio(dev, player_pong_sound, 44100 * sizeof(float));
         } else if ((ball_z - ball.width) > -view_matrix[14]) {
           p = 1;
         }
@@ -757,7 +754,7 @@ enemy_stick.y = 0.0f;
         enemy_stick.model_matrix[13] = enemy_stick.y;
 
       } else if (ball_speed_vector[2] < 0.0f) {
-          if ((currentTime - ball_calc_time_skip) > 200) {
+          if ((currentTime - ball_calc_time_skip) > OPPONENT_SAMPLE_ADJUST) {
             ball_calc_time_skip = currentTime;
             to_position[0] = ball_x - enemy_stick.x;
             to_position[1] = ball_y - enemy_stick.y ;
@@ -766,15 +763,50 @@ enemy_stick.y = 0.0f;
             opp_vel[1] = (to_position[1] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
 
           }
-
+          if (state == 2) {
           enemy_stick.x += (opp_vel[0] * (timeElapsed / 1000.0f));
           enemy_stick.y += (opp_vel[1] * (timeElapsed / 1000.0f));
           enemy_stick.model_matrix[12] = enemy_stick.x;
           enemy_stick.model_matrix[13] = enemy_stick.y;
+        }
       }
     }
 
     render();
+
+    timeElapsed = SDL_GetTicks() - currentTime;
+
+    int t = 16 - timeElapsed;
+    if (t > 0) {
+      //printf("%i\n", t);
+        //SDL_Delay(t);
+    }
+    if (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        loop = 0;
+      } else if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+          case SDLK_ESCAPE:
+            loop = 0;
+            break;
+          default:
+            break;
+        }
+      } else if (event.type == SDL_MOUSEMOTION) {
+            player_stick.wx = event.motion.x;
+            player_stick.wy = -event.motion.y;
+            player_stick.x = (player_stick.wx - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH;
+            player_stick.y = (player_stick.wy + (WINDOW_HEIGHT >> 1)) / (float)WINDOW_HEIGHT;
+            player_stick.model_matrix[12] = player_stick.x;
+            player_stick.model_matrix[13] = player_stick.y;
+      } else if (event.type == SDL_MOUSEBUTTONUP && state == 1) {
+
+          if (ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
+            state = 2;
+          }
+      }
+    }
+
 	}
 }
 
@@ -806,6 +838,10 @@ void dispose_game_element_render(PONG_ELEMENT* element) {
   glDeleteVertexArrays(1, &element->vao);
 }
 
+void dispose_audio() {
+  free(player_pong_sound);
+  SDL_CloseAudioDevice(dev);
+}
 void dispose_renderer() {
   glUseProgram(0);
   glDetachShader(program, vertex_shader);
@@ -819,6 +855,7 @@ void dispose_renderer() {
   dispose_game_element_render(&stage);
   dispose_game_element_render(&ball_shadow);
   dispose_game_element_render(&stick_shadow);
+  dispose_audio();
 }
 
 void cleanup() {
@@ -826,7 +863,84 @@ void cleanup() {
   dispose_renderer();
   dispose_game_elements();
 }
+
+int setup_sound() {
+   if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+     fprintf( stderr, "Sound initialization failed: %s\n", SDL_GetError( ) );
+     return -1;
+   }
+
+
+   want.freq = 44100;
+    want.format = AUDIO_F32SYS;
+    want.channels = 1;
+    want.samples = 2048;
+    want.callback = NULL;
+
+    dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    if (dev == 0) {
+       fprintf( stderr, "Failed opening audio device: %s\n", SDL_GetError( ) );
+       return -1;
+    } else if (have.format != want.format) {
+       fprintf( stderr, "Failed getting sample format (AUDIO_F32SYS)\n");
+       return -1;
+    }
+
+    int samples = 44100;
+    player_pong_sound = (float*)malloc(sizeof(float) * samples);
+
+
+    float phaseSaw = 0;
+    float phaseTri = 0;
+    float triValue;
+
+    float phaseIncr = (P_2PI / samples) * 780.0f;
+
+    for (int n = 0; n < samples; n++) {
+        //sawtooth
+        player_pong_sound[n] = (phaseSaw / M_PI) - 1;
+
+        //player_pong_sound[n] /= 10.0f;
+
+        // triangle
+        triValue = phaseTri * M_PI_2;
+        if (triValue < 0)
+          triValue = 1.0 + triValue;
+        else
+          triValue = 1.0 - triValue;
+
+        player_pong_sound[n] += triValue;
+
+        phaseSaw += phaseIncr;
+        phaseTri += phaseIncr;
+        if (phaseSaw >= P_2PI)
+          phaseSaw -= P_2PI;
+
+        if (phaseTri >= M_PI)
+            phaseTri -= P_2PI;
+
+        player_pong_sound[n] /= 10.0f;
+      }
+      SDL_PauseAudioDevice(dev, 0);
+/*
+    if (SDL_QueueAudio(dev, player_pong_sound, 44100 * sizeof(float))  != 0) {
+      fprintf( stderr, "Failed queuing audio: %s\n", SDL_GetError( ) );
+      return -1;
+    }
+*/
+
+    return 0;
+}
+
+void audio_callback(void *userdata, Uint8* stream, int length) {
+
+}
+
 int main(int argc, char** argv[]) {
+
+  if (setup_sound() < 0) {
+    exit(1);
+  }
 
   if (setup_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
     exit(1);
