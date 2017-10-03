@@ -24,6 +24,7 @@
 #define BALL_RADIUS (STAGE_BLOCK_WIDTH / 50.0f)
 #define VELOCITY_SAMPLE_F 550
 #define OPPONENT_SAMPLE_ADJUST 80
+#define SAMPLE_FREQ 44100
 
 #define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
 #define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
@@ -100,19 +101,53 @@ void main(void) {\n \
 }";
 
 float projection_matrix[16];
-float ortho_projection[16];
 float view_matrix[16];
 
 SDL_AudioSpec want, have;
 SDL_AudioDeviceID dev;
 
 float* player_pong_sound;
-float* opponent_pong_sound;
-float* start_sound;
-float* player_score_sound;
-float* opp_score_sound;
+int player_pong_sound_samples;
 
-void audio_callback(void*, Uint8*, int);
+float* opponent_pong_sound;
+int opponent_pong_sound_samples;
+
+float* player_score_sound;
+int player_score_sound_samples;
+
+float* opp_score_sound;
+int opp_score_sound_samples;
+
+float* start_sound;
+int start_sound_samples;
+
+float* wall_hit_sound;
+int wall_hit_sound_samples;
+
+typedef enum {
+    NONE,
+    SIN,
+    SAW,
+    TRIANGLE,
+    COS
+}OSCILLATOR_TYPE;
+
+typedef struct {
+  float totalTime;
+  float volume;
+  float attackTime;
+  float decayTime;
+  float releaseTime;
+  float decayValue;
+  float filterBeta1;
+  float filterBeta2;
+  OSCILLATOR_TYPE oscillator1_type;
+  OSCILLATOR_TYPE oscillator2_type;
+  float oscillator1_freq;
+  float oscillator2_freq;
+  float delayTime;
+  float reverbSize;
+} SYNTH;
 
 
 int setup_screen(int width, int height) {
@@ -147,7 +182,6 @@ int setup_screen(int width, int height) {
 }
 
 void normalize(float* mesh, int size) {
-  int _size = size * 3;
   for (int i = 0; i < size; i += 3) {
     float length = sqrt(mesh[i] * mesh[i] + mesh[i + 1] * mesh[i + 1] + mesh[i + 2] * mesh[i + 2]);
     mesh[i] /= length;
@@ -228,7 +262,17 @@ void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, 
     x_scale = y_scale / aspect_ratio,
     frustum_length = far_plane - near_plane;
 
-  memset(out, 0, sizeof(projection_matrix));
+  out[1] = 0.0f;
+  out[2] = 0.0f;
+  out[3] = 0.0f;
+  out[4] = 0.0f;
+  out[6] = 0.0f;
+  out[7] = 0.0f;
+  out[8] = 0.0f;
+  out[9] = 0.0f;
+  out[12] = 0.0f;
+  out[13] = 0.0f;
+  out[15] = 0.0f;
   out[0] = x_scale;
   out[5] = y_scale;
   out[10] = -((far_plane + near_plane) / frustum_length);
@@ -236,44 +280,6 @@ void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, 
   out[14] = -((2 * near_plane * far_plane) / frustum_length);
 }
 
-void create_ortho_matrix(float left, float right, float bottom, float top, float near, float far, float* out) {
-  out[0] = 2.0f / (right - left);
-  out[1] = 0.0f;
-  out[2] = 0.0f;
-  out[3] = 0.0f;
-  out[4] = 0.0f;
-  out[5] = 2.0f / (top - bottom);
-  out[6] = 0.0f;
-  out[7] = 0.0f;
-  out[8] = 0.0f;
-  out[9] = 0.0f;
-  out[10] = -2.0f / (far - near);
-  out[11] = 0.0f;
-  out[12] = - ((right + left) / (right - left));
-  out[13] = - ((top + bottom) / (top - bottom));
-  out[14] = -((far + near) / (far - near));
-  out[15] = 1.0f;
-}
-
-
-void create_frustum(float left, float right, float bottom, float top, float near, float far, float* out) {
-  out[0] = (2.0f * near) / (right - left);
-  out[1] = 0.0f;
-  out[2] = 0.0f;
-  out[3] = 0.0f;
-  out[4] = 0.0f;
-  out[5] = (2.0f * near) / (top - bottom);
-  out[6] = 0.0f;
-  out[7] = 0.0f;
-  out[8] = (right + left) / (right - left);
-  out[9] = (top + bottom) / (top - bottom);
-  out[10] = -((far + near) / (far - near));
-  out[11] = -1.0f;
-  out[12] = 0.0f;
-  out[13] = 0.0f;
-  out[14] = (2.0f * far * near) / (far - near);
-  out[15] = 0.0f;
-}
 void load_identity_matrix(float *out) {
 
   out[0] = 1.0f;
@@ -362,7 +368,7 @@ void setup_stick(PONG_ELEMENT* stick) {
 
   stick->vertex = (float*)malloc(sizeof(float) * 12);
   stick->vertex_count = 4;
-  stick->elements = (int*)malloc(sizeof(int) * 6);
+  stick->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
 
   stick->elements_count = 6;
   stick->vertex[0] = -width2;
@@ -414,7 +420,7 @@ void setup_stage() {
   x_width = stage.width / 2.0f;
   y_height = stage.height / 2.0f;
   stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
-  stage.elements = (int*)malloc(sizeof(int) * STAGE_INDICES_COUNT);
+  stage.elements = (unsigned int*)malloc(sizeof(unsigned int) * STAGE_INDICES_COUNT);
 
   stage.vertex_count = STAGE_VERTICES_COUNT;
   stage.elements_count = STAGE_INDICES_COUNT;
@@ -456,12 +462,11 @@ void setup_ball() {
   float theta;
   float phi;
   int vertex = 0;
-  int index = 6;
   int m, p;
   ball.width = BALL_RADIUS;
 
   ball.vertex = (float*)malloc(sizeof(float) * 3 * BALL_VERTICES_COUNT);
-  ball.elements = (int*)malloc(sizeof(int) * BALL_INDICES_COUNT);
+  ball.elements = (unsigned int*)malloc(sizeof(unsigned int) * BALL_INDICES_COUNT);
 
   ball.vertex_count = BALL_VERTICES_COUNT;
   ball.elements_count = BALL_INDICES_COUNT;
@@ -495,7 +500,6 @@ void setup_ball_shadow() {
   ball_shadow.vertex_count = (BALL_SEGMENTS + 1);
   ball_shadow.elements_count = 0;
   int vertex = 3;
-  int elements = 1;
   int p;
   float theta;
   ball_shadow.width = BALL_RADIUS;
@@ -513,7 +517,7 @@ void setup_stick_shadows() {
 
   int elements[] = {0, 1, 2, 0, 2, 3};
   stick_shadow.vertex = (float*)malloc(sizeof(float) * 12);
-  stick_shadow.elements = (int*)malloc(sizeof(int) * 6);
+  stick_shadow.elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
   stick_shadow.vertex_count = 4;
   stick_shadow.elements_count = 6;
   stick_shadow.width = STICK_WIDTH ;
@@ -633,22 +637,18 @@ void run_game() {
   int loop = 1;
   unsigned int timeElapsed = 0;
   unsigned int lastTime, currentTime, velocity_sample_time = 0;
-  int p = 0;
-  int mouse_x, mouse_y;
-  int hit_counter = 0;
   int ball_calc_time_skip = 0;
 
-  float slope, slope2;
-  float rv, rv2;
+  float slope;
+  float rv;
 
   int state = 1;
 
   float to_position[2];
   float opp_vel[2];
-  float unit[2];
 
-enemy_stick.x = 0.0f;
-enemy_stick.y = 0.0f;
+  enemy_stick.x = 0.0f;
+  enemy_stick.y = 0.0f;
   ball.model_matrix[12] = 0.0f;
   ball.model_matrix[13] = 0.0f;
   ball.model_matrix[14] = player_stick.z - ball.width;
@@ -667,9 +667,6 @@ enemy_stick.y = 0.0f;
   player_stick.yprev = 0.0f;
 
   memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
-
-
-
 
 	while (loop)
 	{
@@ -704,6 +701,7 @@ enemy_stick.y = 0.0f;
       if ((ball_z - ball.width) < enemy_stick.z) {
 
           if (ball_in_stick(ball_x, ball_y, ball.width, &enemy_stick)) {
+              ball_z = enemy_stick.z + ball.width;
               ball_speed_vector[2] *= -1.0f;
               slope = -enemy_stick.y / -enemy_stick.x;
               if (enemy_stick.x >= 0) {
@@ -711,6 +709,7 @@ enemy_stick.y = 0.0f;
               } else {
                 rv = 0.3f;
               }
+              SDL_QueueAudio(dev, opponent_pong_sound, opponent_pong_sound_samples * sizeof(float));
           } else {
             state = 3;
           }
@@ -722,25 +721,33 @@ enemy_stick.y = 0.0f;
               ball_speed_vector[1] += (player_stick.y - player_stick.yprev) / (VELOCITY_SAMPLE_F / 1000.0f);
             //  ball_speed_vector[0] += (player_stick.x + ball_x);
               //ball_speed_vector[1] += (player_stick.y - ball_y);
-              ball_z = player_stick.z - ball.width - 0.01;
-              SDL_QueueAudio(dev, player_pong_sound, 44100 * sizeof(float));
+              SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(float));
         } else if ((ball_z - ball.width) > -view_matrix[14]) {
-          p = 1;
+
         }
       }
 
+      short wallhit = 0;
       if (ball_x > ((stage.width / 2.0f) - (ball.width))) {
          ball_speed_vector[0] *= -1.0f;
+         SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
       }
       else if (ball_x < ((-stage.width / 2.0f) + (ball.width))) {
          ball_speed_vector[0] *= -1.0f;
+        // SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
       }
 
       if (ball_y > ((stage.height / 2) - (ball.width))) {
          ball_speed_vector[1] *= -1.0f;
+         //SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
       }
-      if (ball_y < ((-stage.height / 2) + (ball.width))) {
+      else if (ball_y < ((-stage.height / 2) + (ball.width))) {
          ball_speed_vector[1] *= -1.0f;
+        // SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
+      }
+      if (wallhit) {
+
+        wallhit = 0;
       }
 
       ball.model_matrix[12] = ball_x;
@@ -839,8 +846,13 @@ void dispose_game_element_render(PONG_ELEMENT* element) {
 }
 
 void dispose_audio() {
-  free(player_pong_sound);
   SDL_CloseAudioDevice(dev);
+  free(player_pong_sound);
+  free(opponent_pong_sound);
+  free(wall_hit_sound);
+  free(start_sound);
+  free(player_score_sound);
+  free(opp_score_sound);
 }
 void dispose_renderer() {
   glUseProgram(0);
@@ -864,6 +876,119 @@ void cleanup() {
   dispose_game_elements();
 }
 
+float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
+  float value = 0.0f;
+  switch(type) {
+    case SIN:
+      value = sin(*ang);
+      *ang += incr;
+      if (*ang >= P_2PI)
+        *ang -= P_2PI;
+      break;
+    case TRIANGLE: {
+      float triValue = *ang * M_PI_2;
+      *ang += incr;
+      if (triValue < 0)
+        value = 1.0 + triValue;
+      else
+        value = 1.0 - triValue;
+      if (*ang >= M_PI)
+          *ang -= P_2PI;
+      }
+      break;
+    case SAW:
+      value = (*ang / M_PI) - 1.0f;
+      *ang += incr;
+      if (*ang >= P_2PI)
+        *ang -= P_2PI;
+      break;
+    case COS:
+      value = cos(*ang);
+      *ang += incr;
+      if (*ang >= P_2PI)
+        *ang -= P_2PI;
+      break;
+  }
+  return value;
+}
+
+int synthetize(SYNTH* synthParams, float** out_samples) {
+  int state = 0;
+  float value;
+  float oldValue = 0.0f;
+  float volume = synthParams->volume;
+
+  int samples_count = (float)SAMPLE_FREQ * synthParams->totalTime;
+  float *samples = (float*)malloc(samples_count * sizeof(float));
+
+  int attackTimeSamples = (synthParams->attackTime * (float)SAMPLE_FREQ);
+  int decayTimeSamples = (synthParams->decayTime * (float)SAMPLE_FREQ);
+  int releaseTimeSamples = (synthParams->releaseTime * (float)SAMPLE_FREQ);
+
+  int envCount = attackTimeSamples;
+  float slope = volume / (float)attackTimeSamples;
+
+  float phaseIncrOsc1 = (P_2PI / (float)SAMPLE_FREQ) * synthParams->oscillator1_freq;
+  float phaseIncrOsc2 = (P_2PI / (float)SAMPLE_FREQ) * synthParams->oscillator2_freq;
+  float phase1 = 0.0f;
+  float phase2 = 0.0f;
+
+  for (int i = 0; i < samples_count; i++) {
+    value = oscillator(synthParams->oscillator1_type, &phase1, phaseIncrOsc1);
+    if (synthParams->oscillator2_type != NONE) {
+      value = value * oscillator(synthParams->oscillator2_type, &phase2, phaseIncrOsc2);
+    }
+    // filter
+    value = (synthParams->filterBeta1 * value) +  (synthParams->filterBeta2 * oldValue);
+    oldValue = value;
+
+    // amplitude envelope
+    switch (state) {
+      case 0:
+      if (envCount > 0) {
+        volume += slope;
+        envCount--;
+      } else {
+        state = 1;
+        envCount = decayTimeSamples;
+        slope = (volume - synthParams->decayValue) / (float)decayTimeSamples;
+      }
+      case 1:
+        if (envCount > 0) {
+          envCount--;
+          volume -= slope;
+        } else {
+          state = 2;
+          envCount = releaseTimeSamples;
+          slope = volume / (float)releaseTimeSamples;
+        }
+        break;
+      case 2:
+        if (envCount > 0) {
+          envCount--;
+          volume -= slope;
+        } else {
+          state = -1;
+          volume = 0.0f;
+        }
+        break;
+    }
+    samples[i] = volume * value;
+  }
+
+  // simple reverb
+  float delayTime = synthParams->delayTime;
+  float reverbSize = synthParams->reverbSize;
+  int delaySamples = (delayTime * (float)SAMPLE_FREQ);
+  if (delaySamples > 0) {
+    for (int i = 0; i < samples_count - delaySamples; i++) {
+    samples[i + delaySamples] += samples[i] * reverbSize;
+    }
+  }
+  *out_samples = samples;
+  return samples_count;
+}
+
 int setup_sound() {
    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
      fprintf( stderr, "Sound initialization failed: %s\n", SDL_GetError( ) );
@@ -871,7 +996,7 @@ int setup_sound() {
    }
 
 
-   want.freq = 44100;
+   want.freq = SAMPLE_FREQ;
     want.format = AUDIO_F32SYS;
     want.channels = 1;
     want.samples = 2048;
@@ -885,58 +1010,79 @@ int setup_sound() {
        fprintf( stderr, "Failed getting sample format (AUDIO_F32SYS)\n");
        return -1;
     }
+    //
+    SDL_PauseAudioDevice(dev, 0);
+    SYNTH synthParams;
 
-    int samples = 44100;
-    player_pong_sound = (float*)malloc(sizeof(float) * samples);
+    synthParams.totalTime = 0.1f;
+    synthParams.volume = 1.0f;
+    synthParams.attackTime = 0.0f;
+    synthParams.decayTime = 0.05f;
+    synthParams.releaseTime = 0.05f;
+    synthParams.decayValue = 0.3f;
+    synthParams.filterBeta1 = 0.2f ;
+    synthParams.filterBeta2 = 0.3f;
+    synthParams.oscillator1_type = TRIANGLE;
+    synthParams.oscillator2_type = NONE;
+    synthParams.oscillator1_freq = 700.0f;
+    synthParams.delayTime = 0.5f;
+    synthParams.reverbSize = 0.1f;
+    player_pong_sound_samples = synthetize(&synthParams, &player_pong_sound);
+
+    synthParams.oscillator1_freq = 350.0f;
+    synthParams.oscillator2_freq = 350.0f;
+    opponent_pong_sound_samples = synthetize(&synthParams, &opponent_pong_sound);
+
+    synthParams.oscillator1_freq = 700.0f;
+    synthParams.oscillator2_freq = 700.0f;
+    start_sound_samples = synthetize(&synthParams, &start_sound);
 
 
-    float phaseSaw = 0;
-    float phaseTri = 0;
-    float triValue;
+    synthParams.totalTime = 0.6f;
+    synthParams.volume = 1.0f;
+    synthParams.attackTime = 0.02f;
+    synthParams.decayTime = 0.020f;
+    synthParams.releaseTime = 0.040f;
+    synthParams.decayValue = 0.7f;
+    synthParams.filterBeta1 = 0.8f ;
+    synthParams.filterBeta2 = 0.8f;
+    synthParams.oscillator1_type = SIN;
+    synthParams.oscillator2_type = SIN;
+    synthParams.oscillator1_freq = 200.0f;
+    synthParams.oscillator2_freq = 400.0f;
+    synthParams.delayTime = 0.9f;
+    synthParams.reverbSize = 0.1f;
+    wall_hit_sound_samples = synthetize(&synthParams, &wall_hit_sound);
 
-    float phaseIncr = (P_2PI / samples) * 780.0f;
+    synthParams.totalTime = 1.0f;
+    synthParams.volume = 1.0f;
+    synthParams.attackTime = 0.2f;
+    synthParams.decayTime = 0.8f;
+    synthParams.releaseTime = 0.4f;
+    synthParams.decayValue = 0.1f;
+    synthParams.filterBeta1 = 0.4 ;
+    synthParams.filterBeta2 = 0.4;
+    synthParams.oscillator1_type = SIN;
+    synthParams.oscillator2_type = COS;
+    synthParams.oscillator1_freq = 1046.50f;
+    synthParams.oscillator2_freq = 2.0f;
+    synthParams.delayTime = 0.0f;
+    synthParams.reverbSize = 0.0f;
+    player_score_sound_samples = synthetize(&synthParams, &player_score_sound);
 
-    for (int n = 0; n < samples; n++) {
-        //sawtooth
-        player_pong_sound[n] = (phaseSaw / M_PI) - 1;
-
-        //player_pong_sound[n] /= 10.0f;
-
-        // triangle
-        triValue = phaseTri * M_PI_2;
-        if (triValue < 0)
-          triValue = 1.0 + triValue;
-        else
-          triValue = 1.0 - triValue;
-
-        player_pong_sound[n] += triValue;
-
-        phaseSaw += phaseIncr;
-        phaseTri += phaseIncr;
-        if (phaseSaw >= P_2PI)
-          phaseSaw -= P_2PI;
-
-        if (phaseTri >= M_PI)
-            phaseTri -= P_2PI;
-
-        player_pong_sound[n] /= 10.0f;
-      }
-      SDL_PauseAudioDevice(dev, 0);
-/*
-    if (SDL_QueueAudio(dev, player_pong_sound, 44100 * sizeof(float))  != 0) {
-      fprintf( stderr, "Failed queuing audio: %s\n", SDL_GetError( ) );
-      return -1;
-    }
-*/
+    synthParams.totalTime = 0.6f;
+    synthParams.volume = 1.0f;
+    synthParams.attackTime = 0.01f;
+    synthParams.decayTime = 0.3f;
+    synthParams.releaseTime = 0.3f;
+    synthParams.oscillator1_freq = 323.5f;
+    synthParams.oscillator2_freq = 30.0f;
+    opp_score_sound_samples = synthetize(&synthParams, &opp_score_sound);
 
     return 0;
 }
 
-void audio_callback(void *userdata, Uint8* stream, int length) {
-
-}
-
-int main(int argc, char** argv[]) {
+int main(int argc, char** argv) {
 
   if (setup_sound() < 0) {
     exit(1);
