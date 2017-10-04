@@ -99,7 +99,7 @@ void main(void) {\n \
 const GLchar* fragment_shader_source = "#version 430 core\n \
 precision highp float;\n \
 void main(void) {\n \
-  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n \
+  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n \
 }";
 
 float projection_matrix[16];
@@ -1153,17 +1153,13 @@ int setup_text() {
     return -1;
   }
 
-
-
   return 0;
 }
 
 int main(int argc, char** argv) {
-
   if (setup_sound() < 0) {
     exit(1);
   }
-
   if (setup_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
     exit(1);
   }
@@ -1177,9 +1173,8 @@ int main(int argc, char** argv) {
   setup_ball_shadow();
   setup_ball_marks();
   setup_stick_shadows();
-  // setup_game();
+  //setup_start_button();
   setup_renderer(WINDOW_WIDTH, WINDOW_HEIGHT);
-
   run_game();
   cleanup();
 }
