@@ -45,20 +45,23 @@ SDL_GLContext mainContext;
 
 typedef struct {
   float* vertex;
+  float* texcoords;
   unsigned int* elements;
   int vertex_count;
   int elements_count;
+  GLuint vertexType;
   float x;
   float y;
   float z;
   float xprev;
   float yprev;
   float zprev;
-  float wx;
-  float wy;
   GLuint vao;
   GLuint vbo;
+  GLuint vbo2;
   GLuint ebo;
+  GLuint textureUniform;
+  GLuint tex;
   float width;
   float height;
   float large;
@@ -72,39 +75,47 @@ PONG_ELEMENT stage;
 PONG_ELEMENT ball_shadow;
 PONG_ELEMENT stick_shadow;
 PONG_ELEMENT ball_mark;
+PONG_ELEMENT text;
 
 GLuint vertex_shader;
 GLuint fragment_shader;
 GLuint program;
+GLuint textTexture;
 
 GLuint projectionMatrixId;
 GLuint viewMatrixId;
 GLuint modelMatrixId;
-GLuint projectionFlagId;
 GLchar errormsg[ERRORMSG_MAX_LENGTH];
 
 float ball_speed_vector[3];
 
-const GLchar* vertex_shader_source = "#version 430 core\n \
+const GLchar* vertex_shader_source = "#version 400 core\n \
 in vec3 in_Position;\n \
 in vec4 ex_Color;\n \
 in vec2 uv;\n \
 uniform mat4 projectionMatrix;\n \
 uniform mat4 viewMatrix;\n \
 uniform mat4 modelMatrix;\n \
+out vec4 outColor;\n \
+out vec2 outUV;\n \
 void main(void) {\n \
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_Position, 1.0);\n \
+  outColor = ex_Color;\n \
+  outUV = uv;\n \
 }";
 
-const GLchar* fragment_shader_source = "#version 430 core\n \
+const GLchar* fragment_shader_source = "#version 400 core\n \
 precision highp float;\n \
+in vec4 outColor;\n \
+in vec2 outUV;\n \
+out vec4 color;\n \
+uniform sampler2D tex;\n \
 void main(void) {\n \
-  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n \
+  color = texture(tex, outUV);\n \
 }";
 
 float projection_matrix[16];
 float view_matrix[16];
-float scale_matrix[16];
 
 SDL_AudioSpec want, have;
 SDL_AudioDeviceID dev;
@@ -151,6 +162,13 @@ typedef struct {
   float delayTime;
   float reverbSize;
 } SYNTH;
+
+typedef enum {
+  START,
+  NORENDER
+}GAME_STATE;
+
+GAME_STATE gameState;
 
 FT_Library ft;
 FT_Face face;
@@ -316,9 +334,15 @@ int setup_renderer(int width, int height) {
     fprintf(stderr, "OpenGL error: %s\n", glewGetErrorString(err));
     return -1;
   }
-  glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
-  glDisable(GL_CULL_FACE);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  //glDisable(GL_CULL_FACE);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   int result;
@@ -360,7 +384,6 @@ int setup_renderer(int width, int height) {
   projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
   viewMatrixId = glGetUniformLocation(program, "viewMatrix");
   modelMatrixId = glGetUniformLocation(program, "modelMatrix");
-  projectionFlagId = glGetUniformLocation(program, "project");
   glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
   glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
@@ -519,7 +542,7 @@ void build_circle(PONG_ELEMENT* element, float radius, int segments) {
   element->vertex[0] = 0.0f;
   element->vertex[1] = 0.0f;
   element->vertex[2] = 0.0f;
-  for (p = 0, theta = -M_PI_2; p < segments; p++, theta += UNIT_ANGLE) {
+  for (p = 0, theta = -M_PI_2; p < segments; p++, theta += unit_angle) {
         element->vertex[vertex++] = 0.0f;
         element->vertex[vertex++] = sin(theta) * element->width;
         element->vertex[vertex++] = cos(theta) * element->width;
@@ -664,18 +687,60 @@ void render_balls(PONG_ELEMENT* stage) {
   }
 
 }
+void render_text(const char *str, float x, float y, float scale) {
+
+  const char *p;
+  text.model_matrix[0] = scale;
+  text.model_matrix[5] = scale;
+  text.model_matrix[10] = scale;
+
+  glBindVertexArray(text.vao);
+  for(p = str; *p; p++) {
+    if(FT_Load_Char(face, *p, FT_LOAD_RENDER))
+        continue;
+    FT_GlyphSlot g = face->glyph;
+
+  glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &text.tex);
+    glBindTexture(GL_TEXTURE_2D, text.tex);
+    glTexImage2D(
+      GL_TEXTURE_2D,
+      0,
+      GL_RED,
+      g->bitmap.width,
+      g->bitmap.rows,
+      0,
+      GL_RED,
+      GL_UNSIGNED_BYTE,
+      g->bitmap.buffer
+    );
+    glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, text.model_matrix);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  }
+  glBindVertexArray(0);
+  glDeleteTextures(1, &text.tex);
+}
+void render_start_screen() {
+  render_text("A", 0.25f, -1.0f, 0.05f);
+}
 void render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  render_pong_element(&stage);
-  render_pong_element(&enemy_stick);
-  render_shadows(&stage, &ball, &player_stick);
-  render_balls(&stage);
-  render_pong_element(&ball);
-  render_pong_element(&player_stick);
+  //render_pong_element(&stage);
+  if (gameState == START) {
+    render_start_screen();
+    gameState = NORENDER;
+  } else if (gameState == NORENDER) {
+    return;
+  }
+  else {
+    render_pong_element(&enemy_stick);
+    render_shadows(&stage, &ball, &player_stick);
+    render_balls(&stage);
+    render_pong_element(&ball);
+    render_pong_element(&player_stick);
+  }
   SDL_GL_SwapWindow(window);
 }
-
-
 int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* stick) {
   return (
     (((ball_x - ball_width) < (stick->x + stick->width / 2.0f))
@@ -695,7 +760,7 @@ void run_game() {
   float slope;
   float rv;
 
-  int state = 1;
+  int state = 0;
 
   float to_position[2];
   float opp_vel[2];
@@ -859,10 +924,8 @@ void run_game() {
             break;
         }
       } else if (event.type == SDL_MOUSEMOTION) {
-            player_stick.wx = event.motion.x;
-            player_stick.wy = -event.motion.y;
-            player_stick.x = (player_stick.wx - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH;
-            player_stick.y = (player_stick.wy + (WINDOW_HEIGHT >> 1)) / (float)WINDOW_HEIGHT;
+            player_stick.x = (event.motion.x - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH;
+            player_stick.y = (-event.motion.y + (WINDOW_HEIGHT >> 1)) / (float)WINDOW_HEIGHT;
             player_stick.model_matrix[12] = player_stick.x;
             player_stick.model_matrix[13] = player_stick.y;
       } else if (event.type == SDL_MOUSEBUTTONUP && state == 1) {
@@ -1143,6 +1206,8 @@ int setup_sound() {
     return 0;
 }
 
+
+
 int setup_text() {
   if(FT_Init_FreeType(&ft)) {
     fprintf(stderr, "Could not init freetype library\n");
@@ -1152,20 +1217,63 @@ int setup_text() {
     fprintf(stderr, "Could not open font\n");
     return -1;
   }
+  FT_Set_Pixel_Sizes(face, 0, 8);
 
-  return 0;
+
+  GLfloat box[] = {
+    0.5, 0.5, 0.0f,
+    0.5, -0.5, 0.0f,
+    -0.5, 0.5, 0.0f,
+    -0.5, -0.5, 0.0f
+  };
+  GLfloat uv[] = {
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    0.0f, 1.0f,
+    1.0f, 1.0f
+  };
+
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  text.textureUniform = glGetUniformLocation(program, "tex");
+  glUniform1i(text.textureUniform, 0);
+
+  glGenBuffers(1, &text.vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, text.vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_STATIC_DRAW);
+
+  glGenBuffers(1, &text.vbo2);
+  glBindBuffer(GL_ARRAY_BUFFER, text.vbo2);
+  glBufferData(GL_ARRAY_BUFFER, sizeof uv, uv, GL_STATIC_DRAW);
+
+  glGenVertexArrays(1, &text.vao);
+  glBindVertexArray(text.vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, text.vbo);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, text.vbo2);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(2);
+
+  load_identity_matrix(text.model_matrix);
+
+  glBindVertexArray(0);
 }
 
 int main(int argc, char** argv) {
   if (setup_sound() < 0) {
     exit(1);
   }
+
   if (setup_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
     exit(1);
   }
-  if (setup_text() < 0) {
-    exit(1);
-  }
+
   setup_stage();
   setup_player_stick();
   setup_enemy_stick();
@@ -1173,8 +1281,10 @@ int main(int argc, char** argv) {
   setup_ball_shadow();
   setup_ball_marks();
   setup_stick_shadows();
-  //setup_start_button();
   setup_renderer(WINDOW_WIDTH, WINDOW_HEIGHT);
+  if (setup_text() < 0) {
+    exit(1);
+  }
   run_game();
   cleanup();
 }
