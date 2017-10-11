@@ -28,12 +28,11 @@
 #define OPPONENT_SAMPLE_ADJUST 80
 #define SAMPLE_FREQ 44100
 
-#define STAGE_VERTICES_COUNT (4 * STAGE_BLOCKS + 4)
-#define STAGE_INDICES_COUNT (STAGE_BLOCKS * 24)
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define P_2PI 6.283185307f
 #define UNIT_ANGLE (P_2PI / BALL_SEGMENTS)
+#define VERTEX_SIZE 18 // position*4 + color*4 + normal*4 + texture*2 + extra*4
 
 const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.05f, -1.3f };
 const float OPP_STICK_RETURN_SPEED_VECTOR[] = { -0.1f,  0.1f, 0.0f };
@@ -42,26 +41,67 @@ const float OPP_STICK_SPEED_VECTOR[] = { -0.15f,  0.15f, 0.0f };
 
 SDL_Window* window;
 SDL_GLContext mainContext;
+/*
+typedef struct {
+  float x;
+  float y;
+  float z;
+  float w;
+} VECTOR;
 
 typedef struct {
+  float u;
+  float v;
+} TEXCOORD;
+
+typedef struct {
+  VECTOR position;
+  VECTOR color;
+  VECTOR normal;
+  TEXCOORD texcoord;
+  VECTOR extra;
+} VERTEX;
+*/
+typedef struct {
   float* vertex;
-  float* texcoords;
-  unsigned int* elements;
   int vertex_count;
+  GLuint vbo;
+
+  GLuint texture;
+
+  float *positions;
+  float *colors;
+  float *normals;
+  float *texcoords;
+  float *aux_buffer1;
+  float *aux_buffer2;
+  unsigned int* elements;
+  int positions_count;
+  int colors_count;
+  int normals_count;
+  int texcoords_count;
   int elements_count;
+  int aux_buffer1_count;
+  int aux_buffer2_count;
+  GLuint mode;
   GLuint vertexType;
+
   float x;
   float y;
   float z;
   float xprev;
   float yprev;
   float zprev;
+
   GLuint vao;
-  GLuint vbo;
-  GLuint vbo2;
   GLuint ebo;
-  GLuint textureUniform;
-  GLuint tex;
+  GLuint positions_vbo;
+  GLuint colors_vbo;
+  GLuint normals_vbo;
+  GLuint texcoords_vbo;
+  GLuint aux_buffer1_vbo;
+  GLuint aux_buffer2_vbo;
+
   float width;
   float height;
   float large;
@@ -75,7 +115,7 @@ PONG_ELEMENT stage;
 PONG_ELEMENT ball_shadow;
 PONG_ELEMENT stick_shadow;
 PONG_ELEMENT ball_mark;
-PONG_ELEMENT text;
+PONG_ELEMENT startText;
 
 GLuint vertex_shader;
 GLuint fragment_shader;
@@ -89,29 +129,48 @@ GLchar errormsg[ERRORMSG_MAX_LENGTH];
 
 float ball_speed_vector[3];
 
-const GLchar* vertex_shader_source = "#version 400 core\n \
-in vec3 in_Position;\n \
-in vec4 ex_Color;\n \
-in vec2 uv;\n \
+const GLchar* vertex_shader_source =
+"#version 400 core\n \
+in vec3 in_position;\n \
+in vec4 in_color;\n \
+in vec4 in_normal;\n \
+in vec2 in_uv;\n \
+in vec4 extra;\n \
 uniform mat4 projectionMatrix;\n \
 uniform mat4 viewMatrix;\n \
 uniform mat4 modelMatrix;\n \
 out vec4 outColor;\n \
 out vec2 outUV;\n \
+out vec4 outNormal;\n \
+out vec4 outExtra;\n \
 void main(void) {\n \
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_Position, 1.0);\n \
-  outColor = ex_Color;\n \
-  outUV = uv;\n \
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_position, 1.0);\n \
+  outColor = in_color;\n \
+  outUV = in_uv;\n \
+  outNormal = in_normal;\n \
+  outExtra = extra;\n \
 }";
 
-const GLchar* fragment_shader_source = "#version 400 core\n \
-precision highp float;\n \
+const GLchar* fragment_shader_source =
+"#version 400 core\n \
 in vec4 outColor;\n \
 in vec2 outUV;\n \
+in vec3 outNormal;\n \
+in vec4 outExtra;\n \
 out vec4 color;\n \
 uniform sampler2D tex;\n \
+uniform bool stageWireframe;\n \
 void main(void) {\n \
-  color = texture(tex, outUV);\n \
+    if (stageWireframe) {\n \
+      color = vec4(0.0, 1.0, 0.0, 1.0);\n \
+    }\n \
+    else {\n \
+      if (outUV.y >= 0.995 || outUV.x < 0.005)  {\n \
+        color = vec4(0.0, 1.0, 0.0, 1.0);\n \
+      } else {\n \
+        color = outColor;\n \
+      }\n \
+    }\n \
 }";
 
 float projection_matrix[16];
@@ -173,6 +232,18 @@ GAME_STATE gameState;
 FT_Library ft;
 FT_Face face;
 
+GLuint startTextVao;
+GLuint *startTextVbo;
+GLuint *startTextTextures;
+
+GLuint playerTextVao;
+GLuint *playerTextVbo;
+GLuint *playerTextTextures;
+
+GLuint oppoTextVao;
+GLuint *oppoTextVbo;
+GLuint *oppoTextTextures;
+
 int player_score;
 int enemy_score;
 int balls = 9;
@@ -222,16 +293,23 @@ void create_vao(PONG_ELEMENT* element) {
 
   glGenBuffers(1, &element->vbo);
   glBindBuffer(GL_ARRAY_BUFFER, element->vbo);
-  glBufferData(GL_ARRAY_BUFFER, element->vertex_count * 3 * sizeof(float), element->vertex, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  glBufferData(GL_ARRAY_BUFFER, element->vertex_count * VERTEX_SIZE * sizeof(float), element->vertex, GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, 0);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 4);
+  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 8);
+  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 12);
+  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 14);
   glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(2);
+  glEnableVertexAttribArray(3);
+  glEnableVertexAttribArray(4);
 
   if (element->elements_count > 0) {
     glGenBuffers(1, &element->ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element->ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(unsigned int), element->elements, GL_STATIC_DRAW);
   }
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }
 
@@ -335,8 +413,8 @@ int setup_renderer(int width, int height) {
     return -1;
   }
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  //glDisable(GL_CULL_FACE);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  glDisable(GL_CULL_FACE);
+  glPolygonMode(GL_FRONT, GL_FILL);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -391,6 +469,7 @@ int setup_renderer(int width, int height) {
 }
 
 
+
 void setup_stick(PONG_ELEMENT* stick) {
 
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
@@ -443,51 +522,112 @@ void setup_enemy_stick() {
   setup_stick(&enemy_stick);
 }
 
+void assign_position_to_vertex(float* src, float* dest, int src_index, int dest_index) {
+  int src_offset = src_index * 3;
+  int dest_offset = dest_index * VERTEX_SIZE;
+  dest[dest_offset] = src[src_offset];
+  dest[dest_offset + 1] = src[src_offset + 1];
+  dest[dest_offset + 2] = src[src_offset + 2];
+  dest[dest_offset + 3] = 1.0f;
+}
+
+void assign_color_to_vertex(float* vertex_buffer, int index, float* color) {
+  int offset = index * VERTEX_SIZE + 4;
+  vertex_buffer[offset] = color[0];
+  vertex_buffer[offset + 1] = color[1];
+  vertex_buffer[offset + 2] = color[2];
+  vertex_buffer[offset + 3] = color[3];
+}
+void assign_uv_to_vertex(float* vertex_buffer, int index, float u, float v) {
+  int offset = index * VERTEX_SIZE + 12;
+  vertex_buffer[offset] = u;
+  vertex_buffer[offset + 1] = v;
+}
+
 void setup_stage() {
 
   int vertex = 0;
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
   float x_width, y_height;
+  float alpha = 1.0;
   stage.width = STAGE_BLOCK_WIDTH;
   stage.height = STAGE_BLOCK_WIDTH / aspect;
   stage.large = STAGE_BLOCK_LARGE;
 
+  stage.vertexType = GL_TRIANGLES;
+
   x_width = stage.width / 2.0f;
   y_height = stage.height / 2.0f;
-  stage.vertex = (float*)malloc(sizeof(float) * 3 * STAGE_VERTICES_COUNT);
-  stage.elements = (unsigned int*)malloc(sizeof(unsigned int) * STAGE_INDICES_COUNT);
 
-  stage.vertex_count = STAGE_VERTICES_COUNT;
-  stage.elements_count = STAGE_INDICES_COUNT;
+  stage.vertex_count =  24 * STAGE_BLOCKS;
+  stage.elements_count = 0;
+
+  stage.vertex = (float*)calloc( VERTEX_SIZE * stage.vertex_count, sizeof(float));
+
+  int tmp_vertex_count = STAGE_BLOCKS * 8;
+
+  float *tmp_vertex = (float*)malloc(sizeof(float) * 3 * tmp_vertex_count);
 
   for (int i = 0; i <= STAGE_BLOCKS; i++) {
     float z_depth  = (-stage.large * (float)i);
-    stage.vertex[vertex++] = -x_width;
-    stage.vertex[vertex++] = y_height;
-    stage.vertex[vertex++] = z_depth;
 
-    stage.vertex[vertex++] = x_width;
-    stage.vertex[vertex++] = y_height;
-    stage.vertex[vertex++] = z_depth;
+    tmp_vertex[vertex++] = -x_width;
+    tmp_vertex[vertex++] = y_height;
+    tmp_vertex[vertex++] = z_depth;
 
-    stage.vertex[vertex++] = x_width;
-    stage.vertex[vertex++] = -y_height;
-    stage.vertex[vertex++] = z_depth;
+    tmp_vertex[vertex++] = x_width;
+    tmp_vertex[vertex++] = y_height;
+    tmp_vertex[vertex++] = z_depth;
 
-    stage.vertex[vertex++] = -x_width;
-    stage.vertex[vertex++] = -y_height;
-    stage.vertex[vertex++] =  z_depth;
+    tmp_vertex[vertex++] = x_width;
+    tmp_vertex[vertex++] = -y_height;
+    tmp_vertex[vertex++] = z_depth;
+
+    tmp_vertex[vertex++] = -x_width;
+    tmp_vertex[vertex++] = -y_height;
+    tmp_vertex[vertex++] =  z_depth;
   }
+  int triangle1[3];
+  int triangle2[3];
+  float color[] = { 0.0, 1.0f, 0.0f, 0.2f };
+  vertex = 0;
 
-  for (int i = 0, j = 0; i < (STAGE_VERTICES_COUNT - 4); i++, j += 6) {
-      stage.elements[j] = i;
-      stage.elements[j + 1] = i + 4;
-      stage.elements[j + 2] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
+  for (int i = 0, j = 0; i < STAGE_BLOCKS * 4; i++, j+=6) {
+      triangle1[0] = i;
+      triangle1[1] = i + 4;
+      triangle1[2] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
 
-      stage.elements[j + 3] = i;
-      stage.elements[j + 4] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
-      stage.elements[j + 5] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
+      triangle2[0] = i;
+      triangle2[1] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
+      triangle2[2] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
+      if (i > 0 && i % 4 == 0) {
+        color[3] /= 2.0f;
+      }
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[0], j);
+      assign_color_to_vertex(stage.vertex, j, color);
+      assign_uv_to_vertex(stage.vertex, j, 0.0f, 0.0f);
+
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[1], j + 1);
+      assign_color_to_vertex(stage.vertex, j + 1, color);
+      assign_uv_to_vertex(stage.vertex, j + 1, 0.0f, 1.0f);
+
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[2], j + 2);
+      assign_color_to_vertex(stage.vertex, j + 2, color);
+      assign_uv_to_vertex(stage.vertex, j + 2, 1.0f, 1.0f);
+      // second triangle
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[0], j + 3);
+      assign_color_to_vertex(stage.vertex, j + 3, color);
+      assign_uv_to_vertex(stage.vertex, j + 3, 1.0f, 1.0f);
+
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[1], j + 4);
+      assign_color_to_vertex(stage.vertex, j + 4, color);
+      assign_uv_to_vertex(stage.vertex, j + 4, 1.0f, 0.0f);
+
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 5);
+      assign_color_to_vertex(stage.vertex, j + 5, color);
+      assign_uv_to_vertex(stage.vertex, j + 5, 0.0f, 0.0f);
   }
+  free(tmp_vertex);
   load_identity_matrix(stage.model_matrix);
 }
 
@@ -591,9 +731,9 @@ void render_pong_element(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
   glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
   if (element->elements_count > 0) {
-    glDrawElements(GL_TRIANGLES, element->elements_count, GL_UNSIGNED_INT, 0);
+    glDrawElements(element->vertexType, element->elements_count, GL_UNSIGNED_INT, 0);
   } else {
-    glDrawArrays(GL_TRIANGLES, 0, element->vertex_count);
+    glDrawArrays(element->vertexType, 0, element->vertex_count);
   }
   glBindVertexArray(0);
 }
@@ -687,22 +827,59 @@ void render_balls(PONG_ELEMENT* stage) {
   }
 
 }
-void render_text(const char *str, float x, float y, float scale) {
-
+void render_text(PONG_ELEMENT *element, const char *str, float px, float py, float scale, int size) {
   const char *p;
-  text.model_matrix[0] = scale;
-  text.model_matrix[5] = scale;
-  text.model_matrix[10] = scale;
 
-  glBindVertexArray(text.vao);
+  element->vertexType = GL_TRIANGLE_STRIP;
+  element->vertex_count = 4;
+  element->elements_count = 0;
+  element->model_matrix[0] = scale;
+  element->model_matrix[5] = -scale;
+  element->model_matrix[10] = scale;
+  element->model_matrix[12] = -scale * (strlen(str) >> 1);
+  element->model_matrix[13] = py;
+  float totalWidth = 0.0f;
+  float maxHeight = 0.0f;
+  float x = 0.0f;
+  float y = 0.0f;
+
+
+  //element->vbos = (GLuint*)malloc(sizeof(GLuint) * strlen(str));
+  //element->textures = (GLuint*)malloc(sizeof(GLuint) * strlen(str));
+  glGenVertexArrays(1, &element->vao);
+  glGenBuffers(1, &element->vbo);
+  glGenTextures(1, &element->texture);
+
+  glBindVertexArray(element->vao);
+  glBindBuffer(GL_ARRAY_BUFFER, element->vbo);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (char*)NULL + (sizeof(float) * 3));
+  glEnableVertexAttribArray(2);
+  glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
+  FT_Set_Pixel_Sizes(face, 0, size);
   for(p = str; *p; p++) {
     if(FT_Load_Char(face, *p, FT_LOAD_RENDER))
         continue;
     FT_GlyphSlot g = face->glyph;
 
-  glActiveTexture(GL_TEXTURE0);
-    glGenTextures(1, &text.tex);
-    glBindTexture(GL_TEXTURE_2D, text.tex);
+        GLfloat box[] = {
+            1.0 + x, 1.0, 0, 1, 1,
+            1.0 + x, 0.0, 0, 1, 0,
+            0   + x, 1.0, 0, 0, 1,
+            0   + x, 0,   0, 0, 0};
+
+      x += 1.0;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, element->texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(
       GL_TEXTURE_2D,
       0,
@@ -714,25 +891,32 @@ void render_text(const char *str, float x, float y, float scale) {
       GL_UNSIGNED_BYTE,
       g->bitmap.buffer
     );
-    glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, text.model_matrix);
+    glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   }
   glBindVertexArray(0);
-  glDeleteTextures(1, &text.tex);
+  glDeleteBuffers(1, &element->vbo);
+  glDeleteVertexArrays(1, &element->vao);
+  glDeleteTextures(1, &element->texture);
+}
+void render_stage() {
+    //glUniform1i(glGetUniformLocation(program, "stageWireframe"), 1);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  //render_pong_element(&stage);
+  //glUniform1i(glGetUniformLocation(program, "stageWireframe"), 0);
+  //glPolygonMode(GL_FRONT, GL_FILL);
+  render_pong_element(&stage);
+
 }
 void render_start_screen() {
-  render_text("A", 0.25f, -1.0f, 0.05f);
+  render_stage();
+  //render_text(&startText, "Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
 }
 void render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  //render_pong_element(&stage);
   if (gameState == START) {
     render_start_screen();
-    gameState = NORENDER;
-  } else if (gameState == NORENDER) {
-    return;
-  }
-  else {
+  } else {
     render_pong_element(&enemy_stick);
     render_shadows(&stage, &ball, &player_stick);
     render_balls(&stage);
@@ -1217,52 +1401,12 @@ int setup_text() {
     fprintf(stderr, "Could not open font\n");
     return -1;
   }
-  FT_Set_Pixel_Sizes(face, 0, 8);
 
+  glUniform1i(glGetUniformLocation(program, "tex"), 0);
 
-  GLfloat box[] = {
-    0.5, 0.5, 0.0f,
-    0.5, -0.5, 0.0f,
-    -0.5, 0.5, 0.0f,
-    -0.5, -0.5, 0.0f
-  };
-  GLfloat uv[] = {
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    0.0f, 1.0f,
-    1.0f, 1.0f
-  };
-
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  text.textureUniform = glGetUniformLocation(program, "tex");
-  glUniform1i(text.textureUniform, 0);
-
-  glGenBuffers(1, &text.vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, text.vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_STATIC_DRAW);
-
-  glGenBuffers(1, &text.vbo2);
-  glBindBuffer(GL_ARRAY_BUFFER, text.vbo2);
-  glBufferData(GL_ARRAY_BUFFER, sizeof uv, uv, GL_STATIC_DRAW);
-
-  glGenVertexArrays(1, &text.vao);
-  glBindVertexArray(text.vao);
-
-  glBindBuffer(GL_ARRAY_BUFFER, text.vbo);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-  glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, text.vbo2);
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
-  glEnableVertexAttribArray(2);
-
-  load_identity_matrix(text.model_matrix);
-
-  glBindVertexArray(0);
+  // generate start screen text
+  load_identity_matrix(startText.model_matrix);
+  return 0;
 }
 
 int main(int argc, char** argv) {
