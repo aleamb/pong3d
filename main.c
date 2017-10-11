@@ -554,12 +554,12 @@ void setup_stage() {
   stage.height = STAGE_BLOCK_WIDTH / aspect;
   stage.large = STAGE_BLOCK_LARGE;
 
-  stage.vertexType = GL_TRIANGLES;
+  stage.vertexType = GL_QUADS;
 
   x_width = stage.width / 2.0f;
   y_height = stage.height / 2.0f;
 
-  stage.vertex_count =  24 * STAGE_BLOCKS;
+  stage.vertex_count =  10 * STAGE_BLOCKS;
   stage.elements_count = 0;
 
   stage.vertex = (float*)calloc( VERTEX_SIZE * stage.vertex_count, sizeof(float));
@@ -614,10 +614,12 @@ void setup_stage() {
       assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[2], j + 2);
       assign_color_to_vertex(stage.vertex, j + 2, color);
       assign_uv_to_vertex(stage.vertex, j + 2, 1.0f, 1.0f);
-      // second triangle
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[0], j + 3);
+
+      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 3);
       assign_color_to_vertex(stage.vertex, j + 3, color);
       assign_uv_to_vertex(stage.vertex, j + 3, 1.0f, 1.0f);
+
+      /*
 
       assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[1], j + 4);
       assign_color_to_vertex(stage.vertex, j + 4, color);
@@ -626,6 +628,7 @@ void setup_stage() {
       assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 5);
       assign_color_to_vertex(stage.vertex, j + 5, color);
       assign_uv_to_vertex(stage.vertex, j + 5, 0.0f, 0.0f);
+      */
   }
   free(tmp_vertex);
   load_identity_matrix(stage.model_matrix);
