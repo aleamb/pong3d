@@ -66,9 +66,7 @@ typedef struct {
   float* vertex;
   int vertex_count;
   GLuint vbo;
-
   GLuint texture;
-
   float *positions;
   float *colors;
   float *normals;
@@ -76,32 +74,17 @@ typedef struct {
   float *aux_buffer1;
   float *aux_buffer2;
   unsigned int* elements;
-  int positions_count;
-  int colors_count;
-  int normals_count;
-  int texcoords_count;
   int elements_count;
-  int aux_buffer1_count;
-  int aux_buffer2_count;
   GLuint mode;
   GLuint vertexType;
-
   float x;
   float y;
   float z;
   float xprev;
   float yprev;
   float zprev;
-
   GLuint vao;
   GLuint ebo;
-  GLuint positions_vbo;
-  GLuint colors_vbo;
-  GLuint normals_vbo;
-  GLuint texcoords_vbo;
-  GLuint aux_buffer1_vbo;
-  GLuint aux_buffer2_vbo;
-
   float width;
   float height;
   float large;
@@ -115,23 +98,30 @@ PONG_ELEMENT stage;
 PONG_ELEMENT ball_shadow;
 PONG_ELEMENT stick_shadow;
 PONG_ELEMENT ball_mark;
+PONG_ELEMENT overlay;
 PONG_ELEMENT startText;
+
 
 GLuint vertex_shader;
 GLuint fragment_shader;
+GLuint text_fragment_shader;
 GLuint program;
 GLuint textTexture;
+GLuint text_program;
 
 GLuint projectionMatrixId;
 GLuint viewMatrixId;
 GLuint modelMatrixId;
+GLuint projectionMatrixId_text;
+GLuint viewMatrixId_text;
+GLuint modelMatrixId_text;
 GLchar errormsg[ERRORMSG_MAX_LENGTH];
 
 float ball_speed_vector[3];
 
 const GLchar* vertex_shader_source =
 "#version 400 core\n \
-in vec3 in_position;\n \
+in vec4 in_position;\n \
 in vec4 in_color;\n \
 in vec4 in_normal;\n \
 in vec2 in_uv;\n \
@@ -144,7 +134,7 @@ out vec2 outUV;\n \
 out vec4 outNormal;\n \
 out vec4 outExtra;\n \
 void main(void) {\n \
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(in_position, 1.0);\n \
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * in_position;\n \
   outColor = in_color;\n \
   outUV = in_uv;\n \
   outNormal = in_normal;\n \
@@ -155,23 +145,27 @@ const GLchar* fragment_shader_source =
 "#version 400 core\n \
 in vec4 outColor;\n \
 in vec2 outUV;\n \
-in vec3 outNormal;\n \
-in vec4 outExtra;\n \
 out vec4 color;\n \
-uniform sampler2D tex;\n \
 uniform bool stageWireframe;\n \
+uniform sampler2D tex;\n \
 void main(void) {\n \
     if (stageWireframe) {\n \
-      color = vec4(0.0, 1.0, 0.0, 1.0);\n \
+      color = vec4(0.0, 1.0, 0.0, 0.8);\n \
     }\n \
     else {\n \
-      if (outUV.y >= 0.995 || outUV.x < 0.005)  {\n \
-        color = vec4(0.0, 1.0, 0.0, 1.0);\n \
-      } else {\n \
         color = outColor;\n \
-      }\n \
     }\n \
 }";
+
+const GLchar* fragment_shader_text_source =
+"#version 400 core\n \
+in vec2 outUV;\n \
+out vec4 color;\n \
+uniform sampler2D tex;\n \
+void main(void) {\n \
+    color = vec4(1.0, 1.0, 1.0, texture(tex, outUV).r);\n \
+}";
+
 
 float projection_matrix[16];
 float view_matrix[16];
@@ -269,9 +263,7 @@ int setup_screen(int width, int height) {
     fprintf( stderr, "GL context creation failed: %s\n", SDL_GetError( ) );
     return -1;
   }
-
-  SDL_ShowCursor(SDL_DISABLE);
-
+  
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -439,12 +431,16 @@ int setup_renderer(int width, int height) {
       fprintf( stderr, "Links shaders program failed: %s\n", errormsg);
       return -1;
   }
-
-  glBindAttribLocation(program, 0, "in_Position");
-  glBindAttribLocation(program, 1, "ex_Color");
-  glBindAttribLocation(program, 2, "uv");
-
-  glUseProgram(program);
+  text_fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_text_source, &result, errormsg);
+  if (result != 0) {
+      fprintf( stderr, "Text fragment shader build failed: %s\n", errormsg);
+      return -1;
+  }
+  text_program = build_shaders_program(2, &result, errormsg, vertex_shader, text_fragment_shader);
+  if (result != 0) {
+      fprintf( stderr, "Text shaders program failed: %s\n", errormsg);
+      return -1;
+  }
 
   create_vao(&player_stick);
   create_vao(&enemy_stick);
@@ -453,17 +449,29 @@ int setup_renderer(int width, int height) {
   create_vao(&ball_shadow);
   create_vao(&ball_mark);
   create_vao(&stick_shadow);
+  create_vao(&overlay);
 
   load_identity_matrix(view_matrix);
 
   // perspective Z compensation: 0.5 / tan(fov / 2) / aspect
   view_matrix[14] = -0.866f / ((float)WINDOW_WIDTH / WINDOW_HEIGHT);
   create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.001f, 10.0f, projection_matrix);
+
+  glUseProgram(program);
   projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
   viewMatrixId = glGetUniformLocation(program, "viewMatrix");
   modelMatrixId = glGetUniformLocation(program, "modelMatrix");
   glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
   glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
+
+  glUseProgram(text_program);
+  projectionMatrixId_text = glGetUniformLocation(text_program, "projectionMatrix");
+  viewMatrixId_text = glGetUniformLocation(text_program, "viewMatrix");
+  modelMatrixId_text = glGetUniformLocation(text_program, "modelMatrix");
+  glUniformMatrix4fv(projectionMatrixId_text, 1, GL_FALSE, projection_matrix);
+  glUniformMatrix4fv(viewMatrixId_text, 1, GL_FALSE, view_matrix);
+
+  glUseProgram(program);
 
   return 0;
 }
@@ -522,7 +530,16 @@ void setup_enemy_stick() {
   setup_stick(&enemy_stick);
 }
 
-void assign_position_to_vertex(float* src, float* dest, int src_index, int dest_index) {
+
+void assign_position_to_vertex(float* dest, int dest_index, float x, float y, float z) {
+  int dest_offset = dest_index * VERTEX_SIZE;
+  dest[dest_offset] = x;
+  dest[dest_offset + 1] = y;
+  dest[dest_offset + 2] = z;
+  dest[dest_offset + 3] = 1.0f;
+}
+
+void cp_position_to_vertex(float* src, float* dest, int src_index, int dest_index) {
   int src_offset = src_index * 3;
   int dest_offset = dest_index * VERTEX_SIZE;
   dest[dest_offset] = src[src_offset];
@@ -531,17 +548,57 @@ void assign_position_to_vertex(float* src, float* dest, int src_index, int dest_
   dest[dest_offset + 3] = 1.0f;
 }
 
-void assign_color_to_vertex(float* vertex_buffer, int index, float* color) {
+void assign_color_to_vertex(float* vertex_buffer, int index, float r, float g, float b, float a) {
   int offset = index * VERTEX_SIZE + 4;
-  vertex_buffer[offset] = color[0];
-  vertex_buffer[offset + 1] = color[1];
-  vertex_buffer[offset + 2] = color[2];
-  vertex_buffer[offset + 3] = color[3];
+  vertex_buffer[offset] = r;
+  vertex_buffer[offset + 1] = g;
+  vertex_buffer[offset + 2] = b;
+  vertex_buffer[offset + 3] = a;
 }
 void assign_uv_to_vertex(float* vertex_buffer, int index, float u, float v) {
   int offset = index * VERTEX_SIZE + 12;
   vertex_buffer[offset] = u;
   vertex_buffer[offset + 1] = v;
+}
+
+void setup_overlay() {
+  float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
+  float alpha = 0.9f;
+  overlay.width = 1.0f;
+  overlay.height = 1.0f;
+
+  overlay.vertexType = GL_TRIANGLES;
+
+  float width2 = overlay.width / 2.0f;
+  float height2 = overlay.height / 2.0f;
+
+  overlay.vertex = (float*)calloc(12 * VERTEX_SIZE, sizeof(float));
+  overlay.vertex_count = 4;
+  overlay.elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
+
+  overlay.elements_count = 6;
+
+  assign_position_to_vertex(overlay.vertex, 0, -width2, -height2, 0.0f);
+  assign_color_to_vertex(overlay.vertex, 0, 0.0f, 0.0f, 0.0f, alpha);
+
+  assign_position_to_vertex(overlay.vertex, 1, -width2, height2, 0.0f);
+  assign_color_to_vertex(overlay.vertex, 1, 0.0f, 0.0f, 0.0f, alpha);
+
+  assign_position_to_vertex(overlay.vertex, 2, width2, height2, 0.0f);
+  assign_color_to_vertex(overlay.vertex, 2, 0.0f, 0.0f, 0.0f, alpha);
+
+  assign_position_to_vertex(overlay.vertex, 3, width2, -height2, 0.0f);
+  assign_color_to_vertex(overlay.vertex, 3, 0.0f, 0.0f, 0.0f, alpha);
+
+  overlay.elements[0] = 0;
+  overlay.elements[1] = 1;
+  overlay.elements[2] = 2;
+  overlay.elements[3] = 2;
+  overlay.elements[4] = 3;
+  overlay.elements[5] = 0;
+
+  load_identity_matrix(overlay.model_matrix);
+  overlay.model_matrix[14] = 0.0f;
 }
 
 void setup_stage() {
@@ -559,13 +616,12 @@ void setup_stage() {
   x_width = stage.width / 2.0f;
   y_height = stage.height / 2.0f;
 
-  stage.vertex_count =  10 * STAGE_BLOCKS;
+  stage.vertex_count =  24 * STAGE_BLOCKS;
   stage.elements_count = 0;
 
   stage.vertex = (float*)calloc( VERTEX_SIZE * stage.vertex_count, sizeof(float));
 
   int tmp_vertex_count = STAGE_BLOCKS * 8;
-
   float *tmp_vertex = (float*)malloc(sizeof(float) * 3 * tmp_vertex_count);
 
   for (int i = 0; i <= STAGE_BLOCKS; i++) {
@@ -589,10 +645,13 @@ void setup_stage() {
   }
   int triangle1[3];
   int triangle2[3];
-  float color[] = { 0.0, 1.0f, 0.0f, 0.2f };
+  float r = 0.0;
+  float g = 1.0f;
+  float b = 0.0f;
+  float a = 0.2f;
   vertex = 0;
 
-  for (int i = 0, j = 0; i < STAGE_BLOCKS * 4; i++, j+=6) {
+  for (int i = 0, j = 0; i < STAGE_BLOCKS * 4; i++, j+=4) {
       triangle1[0] = i;
       triangle1[1] = i + 4;
       triangle1[2] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
@@ -600,35 +659,21 @@ void setup_stage() {
       triangle2[0] = i;
       triangle2[1] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
       triangle2[2] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
+
       if (i > 0 && i % 4 == 0) {
-        color[3] /= 2.0f;
+        a /= 2.0f;
       }
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[0], j);
-      assign_color_to_vertex(stage.vertex, j, color);
-      assign_uv_to_vertex(stage.vertex, j, 0.0f, 0.0f);
+      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle1[0], j);
+      assign_color_to_vertex(stage.vertex, j, r, g, b, a);
 
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[1], j + 1);
-      assign_color_to_vertex(stage.vertex, j + 1, color);
-      assign_uv_to_vertex(stage.vertex, j + 1, 0.0f, 1.0f);
+      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle1[1], j + 1);
+      assign_color_to_vertex(stage.vertex, j + 1, r, g, b, a);
 
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle1[2], j + 2);
-      assign_color_to_vertex(stage.vertex, j + 2, color);
-      assign_uv_to_vertex(stage.vertex, j + 2, 1.0f, 1.0f);
+      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle1[2], j + 2);
+      assign_color_to_vertex(stage.vertex, j + 2, r, g, b, a);
 
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 3);
-      assign_color_to_vertex(stage.vertex, j + 3, color);
-      assign_uv_to_vertex(stage.vertex, j + 3, 1.0f, 1.0f);
-
-      /*
-
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[1], j + 4);
-      assign_color_to_vertex(stage.vertex, j + 4, color);
-      assign_uv_to_vertex(stage.vertex, j + 4, 1.0f, 0.0f);
-
-      assign_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 5);
-      assign_color_to_vertex(stage.vertex, j + 5, color);
-      assign_uv_to_vertex(stage.vertex, j + 5, 0.0f, 0.0f);
-      */
+      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 3);
+      assign_color_to_vertex(stage.vertex, j + 3, r, g, b, a);
   }
   free(tmp_vertex);
   load_identity_matrix(stage.model_matrix);
@@ -845,21 +890,23 @@ void render_text(PONG_ELEMENT *element, const char *str, float px, float py, flo
   float maxHeight = 0.0f;
   float x = 0.0f;
   float y = 0.0f;
+  GLint current_program;
+  GLenum err = glGetError();
+  glGetIntegerv(GL_CURRENT_PROGRAM, &current_program);
 
+ glUseProgram(text_program);
 
-  //element->vbos = (GLuint*)malloc(sizeof(GLuint) * strlen(str));
-  //element->textures = (GLuint*)malloc(sizeof(GLuint) * strlen(str));
   glGenVertexArrays(1, &element->vao);
   glGenBuffers(1, &element->vbo);
   glGenTextures(1, &element->texture);
 
   glBindVertexArray(element->vao);
   glBindBuffer(GL_ARRAY_BUFFER, element->vbo);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
+  glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 6, 0);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (char*)NULL + (sizeof(float) * 3));
-  glEnableVertexAttribArray(2);
-  glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
+  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (char*)NULL + (sizeof(float) * 4));
+  glEnableVertexAttribArray(3);
+  glUniformMatrix4fv(modelMatrixId_text, 1, GL_FALSE, element->model_matrix);
   FT_Set_Pixel_Sizes(face, 0, size);
   for(p = str; *p; p++) {
     if(FT_Load_Char(face, *p, FT_LOAD_RENDER))
@@ -867,10 +914,10 @@ void render_text(PONG_ELEMENT *element, const char *str, float px, float py, flo
     FT_GlyphSlot g = face->glyph;
 
         GLfloat box[] = {
-            1.0 + x, 1.0, 0, 1, 1,
-            1.0 + x, 0.0, 0, 1, 0,
-            0   + x, 1.0, 0, 0, 1,
-            0   + x, 0,   0, 0, 0};
+            1.0 + x, 1.0, 0.2, 1.0, 1, 1,
+            1.0 + x, 0.0, 0.2, 1.0, 1, 0,
+            0   + x, 1.0, 0.2, 1.0, 0, 1,
+            0   + x, 0,   0.2, 1.0, 0, 0};
 
       x += 1.0;
 
@@ -894,31 +941,36 @@ void render_text(PONG_ELEMENT *element, const char *str, float px, float py, flo
       GL_UNSIGNED_BYTE,
       g->bitmap.buffer
     );
+
     glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   }
+  glUseProgram(current_program);
   glBindVertexArray(0);
   glDeleteBuffers(1, &element->vbo);
   glDeleteVertexArrays(1, &element->vao);
   glDeleteTextures(1, &element->texture);
 }
 void render_stage() {
-    //glUniform1i(glGetUniformLocation(program, "stageWireframe"), 1);
-  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  //render_pong_element(&stage);
-  //glUniform1i(glGetUniformLocation(program, "stageWireframe"), 0);
-  //glPolygonMode(GL_FRONT, GL_FILL);
+  glUniform1i(glGetUniformLocation(program, "stageWireframe"), 1);
+  glPolygonMode(GL_FRONT, GL_LINE);
+  render_pong_element(&stage);
+  glUniform1i(glGetUniformLocation(program, "stageWireframe"), 0);
+  glPolygonMode(GL_FRONT, GL_FILL);
   render_pong_element(&stage);
 
 }
 void render_start_screen() {
   render_stage();
-  //render_text(&startText, "Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
+  render_pong_element(&overlay);
+  render_text(&startText, "Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
 }
 void render() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   if (gameState == START) {
     render_start_screen();
+    SDL_GL_SwapWindow(window);
+    gameState = NORENDER;
   } else {
     render_pong_element(&enemy_stick);
     render_shadows(&stage, &ball, &player_stick);
@@ -926,7 +978,8 @@ void render() {
     render_pong_element(&ball);
     render_pong_element(&player_stick);
   }
-  SDL_GL_SwapWindow(window);
+  if (gameState != NORENDER)
+    SDL_GL_SwapWindow(window);
 }
 int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* stick) {
   return (
@@ -1422,6 +1475,7 @@ int main(int argc, char** argv) {
   }
 
   setup_stage();
+  setup_overlay();
   setup_player_stick();
   setup_enemy_stick();
   setup_ball();
