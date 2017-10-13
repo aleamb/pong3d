@@ -27,12 +27,14 @@
 #define VELOCITY_SAMPLE_F 550
 #define OPPONENT_SAMPLE_ADJUST 80
 #define SAMPLE_FREQ 44100
+#define NUMBER_OF_BALLS 12
 
 #define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
 #define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
 #define P_2PI 6.283185307f
 #define UNIT_ANGLE (P_2PI / BALL_SEGMENTS)
 #define VERTEX_SIZE 18 // position*4 + color*4 + normal*4 + texture*2 + extra*4
+#define OVERLAY_ALPHA 0.8f
 
 const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.05f, -1.3f };
 const float OPP_STICK_RETURN_SPEED_VECTOR[] = { -0.1f,  0.1f, 0.0f };
@@ -148,12 +150,13 @@ in vec2 outUV;\n \
 out vec4 color;\n \
 uniform bool stageWireframe;\n \
 uniform sampler2D tex;\n \
+uniform float alpha;\n \
 void main(void) {\n \
     if (stageWireframe) {\n \
-      color = vec4(0.0, 1.0, 0.0, 0.8);\n \
+      color = outColor + vec4(0.0, 0.0, 0.0, 0.2);\n \
     }\n \
     else {\n \
-        color = outColor;\n \
+      color = vec4(outColor.xyz, outColor.w - alpha);\n \
     }\n \
 }";
 
@@ -218,6 +221,13 @@ typedef struct {
 
 typedef enum {
   START,
+  LOADING,
+  PLAYER_SERVICE,
+  PLAYING,
+  OPP_SERVICE,
+  PLAYER_WINS,
+  PLAYER_LOSE,
+  FINISHED,
   NORENDER
 }GAME_STATE;
 
@@ -237,10 +247,13 @@ GLuint *playerTextTextures;
 GLuint oppoTextVao;
 GLuint *oppoTextVbo;
 GLuint *oppoTextTextures;
+GLuint globalAlpha;
 
 int player_score;
-int enemy_score;
-int balls = 9;
+int opponent_score;
+int balls = NUMBER_OF_BALLS;
+
+float overlay_alpha;
 
 int setup_screen(int width, int height) {
 
@@ -263,7 +276,7 @@ int setup_screen(int width, int height) {
     fprintf( stderr, "GL context creation failed: %s\n", SDL_GetError( ) );
     return -1;
   }
-  
+
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -464,6 +477,10 @@ int setup_renderer(int width, int height) {
   glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
   glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
+  globalAlpha = glGetUniformLocation(program, "alpha");
+  glUniform1f(globalAlpha, 0.0);
+
+
   glUseProgram(text_program);
   projectionMatrixId_text = glGetUniformLocation(text_program, "projectionMatrix");
   viewMatrixId_text = glGetUniformLocation(text_program, "viewMatrix");
@@ -471,63 +488,10 @@ int setup_renderer(int width, int height) {
   glUniformMatrix4fv(projectionMatrixId_text, 1, GL_FALSE, projection_matrix);
   glUniformMatrix4fv(viewMatrixId_text, 1, GL_FALSE, view_matrix);
 
+
   glUseProgram(program);
 
   return 0;
-}
-
-
-
-void setup_stick(PONG_ELEMENT* stick) {
-
-  float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
-
-  stick->width = STICK_WIDTH;
-  stick->height = STICK_WIDTH / aspect;
-
-  float width2 = stick->width / 2.0f;
-  float height2 = stick->height / 2.0f;
-
-  stick->vertex = (float*)malloc(sizeof(float) * 12);
-  stick->vertex_count = 4;
-  stick->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
-
-  stick->elements_count = 6;
-  stick->vertex[0] = -width2;
-  stick->vertex[1] = -height2;
-  stick->vertex[2] = stick->z;
-
-  stick->vertex[3] = -width2;
-  stick->vertex[4] = height2;
-  stick->vertex[5] = stick->z;
-
-  stick->vertex[6] = width2;
-  stick->vertex[7] = height2;
-  stick->vertex[8] = stick->z;
-
-  stick->vertex[9] = width2;
-  stick->vertex[10] = -height2;
-  stick->vertex[11] = stick->z;
-
-  stick->elements[0] = 0;
-  stick->elements[1] = 1;
-  stick->elements[2] = 2;
-  stick->elements[3] = 2;
-  stick->elements[4] = 3;
-  stick->elements[5] = 0;
-
-  load_identity_matrix(stick->model_matrix);
-
-}
-
-void setup_player_stick() {
-  player_stick.z = -STAGE_BLOCK_WIDTH / 50.0f;
-  setup_stick(&player_stick);
-}
-
-void setup_enemy_stick() {
-  enemy_stick.z = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
-  setup_stick(&enemy_stick);
 }
 
 
@@ -561,9 +525,62 @@ void assign_uv_to_vertex(float* vertex_buffer, int index, float u, float v) {
   vertex_buffer[offset + 1] = v;
 }
 
-void setup_overlay() {
+void setup_stick(PONG_ELEMENT* stick) {
+
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
-  float alpha = 0.9f;
+
+  stick->vertexType = GL_TRIANGLES;
+
+  stick->width = STICK_WIDTH;
+  stick->height = STICK_WIDTH / aspect;
+
+  float width2 = stick->width / 2.0f;
+  float height2 = stick->height / 2.0f;
+
+  stick->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
+  stick->vertex_count = 4;
+  stick->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
+  stick->elements_count = 6;
+
+  assign_position_to_vertex(stick->vertex, 0, -width2, -height2, stick->z);
+  assign_color_to_vertex(stick->vertex, 0, 0.5, 0.5, 0.5, 0.5);
+  assign_uv_to_vertex(stick->vertex, 0, 0, 0);
+
+  assign_position_to_vertex(stick->vertex, 1, -width2, height2, stick->z);
+  assign_color_to_vertex(stick->vertex, 1, 0.5, 0.5, 0.5, 0.5);
+  assign_uv_to_vertex(stick->vertex, 1, 0, 1);
+
+  assign_position_to_vertex(stick->vertex, 2, width2, height2, stick->z);
+  assign_color_to_vertex(stick->vertex, 2, 0.5, 0.5, 0.5, 0.5);
+  assign_uv_to_vertex(stick->vertex, 2, 1, 1);
+
+  assign_position_to_vertex(stick->vertex, 3, width2, -height2, stick->z);
+  assign_color_to_vertex(stick->vertex, 3, 0.5, 0.5, 0.5, 0.5);
+  assign_uv_to_vertex(stick->vertex, 3, 1, 0);
+
+  stick->elements[0] = 0;
+  stick->elements[1] = 1;
+  stick->elements[2] = 2;
+  stick->elements[3] = 2;
+  stick->elements[4] = 3;
+  stick->elements[5] = 0;
+
+  load_identity_matrix(stick->model_matrix);
+
+}
+
+void setup_player_stick() {
+  player_stick.z = 0.0f;
+  setup_stick(&player_stick);
+}
+
+void setup_enemy_stick() {
+  enemy_stick.z = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
+  setup_stick(&enemy_stick);
+}
+
+void setup_overlay() {
+  float alpha = OVERLAY_ALPHA;
   overlay.width = 1.0f;
   overlay.height = 1.0f;
 
@@ -606,7 +623,6 @@ void setup_stage() {
   int vertex = 0;
   float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
   float x_width, y_height;
-  float alpha = 1.0;
   stage.width = STAGE_BLOCK_WIDTH;
   stage.height = STAGE_BLOCK_WIDTH / aspect;
   stage.large = STAGE_BLOCK_LARGE;
@@ -686,9 +702,10 @@ void setup_ball() {
   float phi;
   int vertex = 0;
   int m, p;
+  ball.vertexType = GL_TRIANGLES;
   ball.width = BALL_RADIUS;
 
-  ball.vertex = (float*)malloc(sizeof(float) * 3 * BALL_VERTICES_COUNT);
+  ball.vertex = (float*)malloc(sizeof(float) * VERTEX_SIZE * BALL_VERTICES_COUNT);
   ball.elements = (unsigned int*)malloc(sizeof(unsigned int) * BALL_INDICES_COUNT);
 
   ball.vertex_count = BALL_VERTICES_COUNT;
@@ -700,9 +717,14 @@ void setup_ball() {
   {
     for (m = 0, phi = 0.0f; m < BALL_SEGMENTS; m++, phi += UNIT_ANGLE)
     {
-      ball.vertex[vertex++] = cos(theta) * sin(phi) * ball.width;
-      ball.vertex[vertex++] = sin(theta) * ball.width;
-      ball.vertex[vertex++] = cos(theta) * cos(phi) * ball.width;
+      assign_position_to_vertex(
+        ball.vertex, vertex,
+        cos(theta) * sin(phi) * ball.width,
+        sin(theta) * ball.width,
+        cos(theta) * cos(phi) * ball.width
+      );
+      assign_color_to_vertex(ball.vertex, vertex, 1.0, 1.0, 1.0, 1.0);
+      vertex++;
     }
   }
   for (int i = 0, j = 0; i < (ball.vertex_count / 2); i++, j += 6) {
@@ -718,59 +740,59 @@ void setup_ball() {
   load_identity_matrix(ball.model_matrix);
   ball.model_matrix[14] = -1.0f;
 }
-void build_circle(PONG_ELEMENT* element, float radius, int segments) {
-  element->vertex = (float*)malloc(sizeof(float) * 3 * (segments + 1));
-  element->vertex_count = (segments + 1);
+void build_circle(PONG_ELEMENT* element, float radius, int segments, float shadow) {
+  element->vertex = (float*)calloc((segments + 2) * VERTEX_SIZE, sizeof(float));
+  element->vertex_count = (segments + 2);
   element->elements_count = 0;
-  int vertex = 3;
+  element->vertexType = GL_TRIANGLE_FAN;
+  int vertex = 1;
   int p;
-  float unit_angle = M_PI_2 / (float)segments;
+  float unit_angle = P_2PI / (float)segments;
   float theta;
   element->width = radius;
-  element->vertex[0] = 0.0f;
-  element->vertex[1] = 0.0f;
-  element->vertex[2] = 0.0f;
-  for (p = 0, theta = -M_PI_2; p < segments; p++, theta += unit_angle) {
-        element->vertex[vertex++] = 0.0f;
-        element->vertex[vertex++] = sin(theta) * element->width;
-        element->vertex[vertex++] = cos(theta) * element->width;
+  assign_position_to_vertex(element->vertex, 0, 0.0f, 0.0f, 0.0f);
+  assign_color_to_vertex(element->vertex, 0, 1.0, 1.0, 1.0, shadow);
+  for (p = 0, theta = 0; p <= segments; p++, theta -= unit_angle) {
+      assign_position_to_vertex(element->vertex, vertex, 0.0f, sin(theta) * element->width, -cos(theta) * element->width);
+      assign_color_to_vertex(element->vertex, vertex, 1.0, 1.0, 1.0, shadow);
+      vertex++;
   }
   load_identity_matrix(ball_shadow.model_matrix);
 }
 void setup_ball_shadow() {
   load_identity_matrix(ball_shadow.model_matrix);
-  build_circle(&ball_shadow, BALL_RADIUS, BALL_SEGMENTS);
+  build_circle(&ball_shadow, BALL_RADIUS, BALL_SEGMENTS, 0.2f);
 }
 
 void setup_ball_marks() {
-  build_circle(&ball_mark, BALL_RADIUS / 2.0f, BALL_SEGMENTS);
+  build_circle(&ball_mark, BALL_RADIUS / 2.0f, BALL_SEGMENTS, 1.0f);
 }
 void setup_stick_shadows() {
 
   int elements[] = {0, 1, 2, 0, 2, 3};
-  stick_shadow.vertex = (float*)malloc(sizeof(float) * 12);
+  stick_shadow.vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
   stick_shadow.elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
   stick_shadow.vertex_count = 4;
   stick_shadow.elements_count = 6;
   stick_shadow.width = STICK_WIDTH ;
   stick_shadow.height = STAGE_BLOCK_WIDTH / 50;
   stick_shadow.z = -STAGE_BLOCK_WIDTH / 50;
+  stick_shadow.vertexType = GL_TRIANGLES;
+  float width2 = stick_shadow.width / 2.0f;
+  float height2 = stick_shadow.height / 2.0f;
 
-  stick_shadow.vertex[0] = -stick_shadow.width / 2.0f;
-  stick_shadow.vertex[1] = -stick_shadow.height / 2.0f;
-  stick_shadow.vertex[2] =  stick_shadow.z;
+  assign_position_to_vertex(stick_shadow.vertex, 0, -width2, -height2, stick_shadow.z);
+  assign_color_to_vertex(stick_shadow.vertex, 0, 1.0, 1.0, 1.0, 0.2);
 
-  stick_shadow.vertex[3] = -stick_shadow.width / 2.0f;
-  stick_shadow.vertex[4] = stick_shadow.height / 2.0f;
-  stick_shadow.vertex[5] = stick_shadow.z;
+  assign_position_to_vertex(stick_shadow.vertex, 1, -width2, height2, stick_shadow.z);
+  assign_color_to_vertex(stick_shadow.vertex, 1, 1.0, 1.0, 1.0, 0.2);
 
-  stick_shadow.vertex[6] = stick_shadow.width / 2.0f;
-  stick_shadow.vertex[7] = stick_shadow.height / 2.0f;
-  stick_shadow.vertex[8] = stick_shadow.z;
+  assign_position_to_vertex(stick_shadow.vertex, 2, width2, height2, stick_shadow.z);
+  assign_color_to_vertex(stick_shadow.vertex, 2, 1.0, 1.0, 1.0, 0.2);
 
-  stick_shadow.vertex[9] = stick_shadow.width / 2.0f;
-  stick_shadow.vertex[10] = -stick_shadow.height / 2.0f;
-  stick_shadow.vertex[11] = stick_shadow.z;
+  assign_position_to_vertex(stick_shadow.vertex, 3, width2, -height2, stick_shadow.z);
+  assign_color_to_vertex(stick_shadow.vertex, 3, 1.0, 1.0, 1.0, 0.2);
+
   memcpy(stick_shadow.elements, elements, sizeof(elements));
   load_identity_matrix(stick_shadow.model_matrix);
 }
@@ -790,14 +812,14 @@ void render_shadows(PONG_ELEMENT* stage, PONG_ELEMENT* ball, PONG_ELEMENT* stick
 
     load_identity_matrix(ball_shadow.model_matrix);
 
-    ball_shadow.model_matrix[12] = -stage->width / 2.0f;
+    ball_shadow.model_matrix[12] = -stage->width / 2.0f + 0.0001;
     ball_shadow.model_matrix[13] = ball->model_matrix[13];
-    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    ball_shadow.model_matrix[14] = ball->model_matrix[14] - 0.011;
     render_pong_element(&ball_shadow);
 
-    ball_shadow.model_matrix[12] = stage->width / 2.0f;
+    ball_shadow.model_matrix[12] = stage->width / 2.0f - 0.0001;
     ball_shadow.model_matrix[13] = ball->model_matrix[13];
-    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    ball_shadow.model_matrix[14] = ball->model_matrix[14] - 0.011;;
     render_pong_element(&ball_shadow);
 
     ball_shadow.model_matrix[0] = 0.0f;
@@ -806,13 +828,13 @@ void render_shadows(PONG_ELEMENT* stage, PONG_ELEMENT* ball, PONG_ELEMENT* stick
     ball_shadow.model_matrix[5] = 0.0f;
 
     ball_shadow.model_matrix[12] = ball->model_matrix[12];
-    ball_shadow.model_matrix[13] = -stage->height / 2.0f;
-    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    ball_shadow.model_matrix[13] = -stage->height / 2.0f + 0.0001;
+    ball_shadow.model_matrix[14] = ball->model_matrix[14]- 0.016;
     render_pong_element(&ball_shadow);
 
     ball_shadow.model_matrix[12] = ball->model_matrix[12];
-    ball_shadow.model_matrix[13] = stage->height / 2.0f;
-    ball_shadow.model_matrix[14] = ball->model_matrix[14];
+    ball_shadow.model_matrix[13] = stage->height / 2.0f - 0.0001;
+    ball_shadow.model_matrix[14] = ball->model_matrix[14] - 0.016;;
     render_pong_element(&ball_shadow);
 
     stick_shadow.model_matrix[0] = 1.0f;
@@ -868,7 +890,7 @@ void render_balls(PONG_ELEMENT* stage) {
   float gap = ball_mark.width * 3.0f;
   ball_mark.model_matrix[12] = -((float)(balls + 1) * gap) / 2.0f;
 
-  for (int i = 0; i < balls; i++) {
+  for (int i = 1; i < balls; i++) {
     ball_mark.model_matrix[12] += gap;
     ball_mark.model_matrix[14] = 0.0f;
     render_pong_element(&ball_mark);
@@ -884,14 +906,10 @@ void render_text(PONG_ELEMENT *element, const char *str, float px, float py, flo
   element->model_matrix[0] = scale;
   element->model_matrix[5] = -scale;
   element->model_matrix[10] = scale;
-  element->model_matrix[12] = -scale * (strlen(str) >> 1);
+  element->model_matrix[12] = px - scale * (strlen(str) >> 1);
   element->model_matrix[13] = py;
-  float totalWidth = 0.0f;
-  float maxHeight = 0.0f;
   float x = 0.0f;
-  float y = 0.0f;
   GLint current_program;
-  GLenum err = glGetError();
   glGetIntegerv(GL_CURRENT_PROGRAM, &current_program);
 
  glUseProgram(text_program);
@@ -958,28 +976,91 @@ void render_stage() {
   glUniform1i(glGetUniformLocation(program, "stageWireframe"), 0);
   glPolygonMode(GL_FRONT, GL_FILL);
   render_pong_element(&stage);
-
 }
 void render_start_screen() {
   render_stage();
   render_pong_element(&overlay);
   render_text(&startText, "Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
 }
-void render() {
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  if (gameState == START) {
-    render_start_screen();
-    SDL_GL_SwapWindow(window);
-    gameState = NORENDER;
+void render_sticks() {
+  render_pong_element(&player_stick);
+  render_pong_element(&enemy_stick);
+
+  render_pong_element(&player_stick);
+}
+void render_scores(PONG_ELEMENT* stage) {
+  char text[16];
+  sprintf(text, "YOU: %d", player_score);
+  render_text(&startText, text, -stage->width / 2.0f + 0.1f, -stage->height / 2.0f + 0.05, 0.02, 48);
+  sprintf(text, "Computer: %d", opponent_score);
+  render_text(&startText, text, stage->width / 2.0f - 0.15f, -stage->height / 2.0f + 0.05, 0.02, 48);
+}
+void render_player_lose_screen(int frames) {
+  if (frames == 0) {
+    SDL_QueueAudio(dev, opp_score_sound, opp_score_sound_samples * sizeof(float));
+  } else if (frames < 90) {
+      render_stage();
+      render_pong_element(&overlay);
+      render_text(&startText, "Computer wins", 0, 0, 0.02, 48);
   } else {
-    render_pong_element(&enemy_stick);
-    render_shadows(&stage, &ball, &player_stick);
-    render_balls(&stage);
-    render_pong_element(&ball);
-    render_pong_element(&player_stick);
+    gameState = OPP_SERVICE;
+    opponent_score++;
+    balls--;
+    if (balls == 0) {
+        SDL_ShowCursor(SDL_TRUE);
+      gameState = FINISHED;
+    }
   }
-  if (gameState != NORENDER)
-    SDL_GL_SwapWindow(window);
+}
+void opponent_service(int frames) {
+
+  enemy_stick.x = 0.0f;
+  enemy_stick.y = 0.0f;
+  enemy_stick.model_matrix[12] = 0.0f;
+  enemy_stick.model_matrix[13] = 0.0f;
+  ball.model_matrix[12] = 0.0f;
+  ball.model_matrix[13] = 0.0f;
+  ball.model_matrix[14] = -1.4f;
+
+
+  memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(ball_speed_vector));
+  ball_speed_vector[2] *= -1.0f;
+  gameState = PLAYING;
+  SDL_WarpMouseInWindow(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+  balls--;
+  if (balls == 0) {
+      SDL_ShowCursor(SDL_TRUE);
+    gameState = FINISHED;
+  }
+
+}
+void render_player_wins(int frames) {
+  if (frames == 0) {
+      player_score++;
+    SDL_QueueAudio(dev, player_score_sound, player_score_sound_samples * sizeof(float));
+  } else if (frames < 90) {
+      render_stage();
+      render_pong_element(&overlay);
+      render_text(&startText, "You wins", 0, 0, 0.02, 48);
+  } else {
+
+    enemy_stick.x = 0.0f;
+    enemy_stick.y = 0.0f;
+    enemy_stick.model_matrix[12] = 0.0f;
+    enemy_stick.model_matrix[13] = 0.0f;
+    ball.model_matrix[12] = 0.0f;
+    ball.model_matrix[13] = 0.0f;
+    ball.model_matrix[14] = player_stick.z - ball.width;
+    memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(ball_speed_vector));
+    gameState = PLAYER_SERVICE;
+    SDL_WarpMouseInWindow(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+  }
+}
+void render_finish_screen(int frames) {
+  render_stage();
+  render_pong_element(&overlay);
+  render_text(&startText, "Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
+  render_scores(&stage);
 }
 int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* stick) {
   return (
@@ -991,6 +1072,62 @@ int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* st
     &&
     ((ball_y + ball_width) > (stick->y - stick->height / 2.0f))));
 }
+
+void task_prepare_players(int frames, float timeElapsed) {
+    if (frames <= 20) {
+        glUniform1f(globalAlpha, 0.0);
+        render_stage();
+        glUniform1f(globalAlpha,  OVERLAY_ALPHA / 20.0f * frames);
+        render_pong_element(&overlay);
+    } else if (frames == 21) {
+        glUniform1f(globalAlpha, 0.0);
+        render_stage();
+        render_pong_element(&ball);
+        SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(float));
+    } else {
+      enemy_stick.x = 0.0f;
+      enemy_stick.y = 0.0f;
+      ball.model_matrix[12] = 0.0f;
+      ball.model_matrix[13] = 0.0f;
+      ball.model_matrix[14] = player_stick.z - ball.width;
+      player_score = 0;
+      opponent_score = 0;
+      balls = NUMBER_OF_BALLS;
+    SDL_ShowCursor(SDL_FALSE);
+      gameState = PLAYER_SERVICE;
+    }
+}
+void render(int frames, float delta) {
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  if (gameState == START) {
+      render_start_screen();
+      SDL_GL_SwapWindow(window);
+  } else if (gameState == LOADING) {
+      task_prepare_players(frames, delta);
+      SDL_GL_SwapWindow(window);
+  } else if (gameState == PLAYER_LOSE) {
+      render_player_lose_screen(frames);
+      SDL_GL_SwapWindow(window);
+  } else if (gameState == OPP_SERVICE) {
+      opponent_service(frames);
+  } else if (gameState == PLAYER_WINS) {
+      render_player_wins(frames);
+      SDL_GL_SwapWindow(window);
+  }
+  else if (gameState == FINISHED) {
+     render_finish_screen(frames);
+     SDL_GL_SwapWindow(window);
+ } else {
+      render_stage();
+      render_shadows(&stage, &ball, &player_stick);
+      render_balls(&stage);
+      render_pong_element(&ball);
+      render_sticks();
+      render_scores(&stage);
+
+      SDL_GL_SwapWindow(window);
+  }
+}
 void run_game() {
   int loop = 1;
   unsigned int timeElapsed = 0;
@@ -1000,20 +1137,10 @@ void run_game() {
   float slope;
   float rv;
 
-  int state = 0;
+  int frames = 0;
 
   float to_position[2];
   float opp_vel[2];
-
-  enemy_stick.x = 0.0f;
-  enemy_stick.y = 0.0f;
-  ball.model_matrix[12] = 0.0f;
-  ball.model_matrix[13] = 0.0f;
-  ball.model_matrix[14] = player_stick.z - ball.width;
-
-  float ball_x = ball.model_matrix[12];
-  float ball_y = ball.model_matrix[13];
-  float ball_z = ball.model_matrix[14];
 
   SDL_Event event;
   SDL_WarpMouseInWindow(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
@@ -1026,36 +1153,38 @@ void run_game() {
 
   memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
 
+  float ball_x = ball.model_matrix[12];
+  float ball_y = ball.model_matrix[13];
+  float ball_z = ball.model_matrix[14];
+
 	while (loop)
 	{
-
     currentTime = SDL_GetTicks();
 
     timeElapsed = currentTime - lastTime;
     lastTime = currentTime;
 
 
-
-    if (state == 2) {
+    if (gameState == PLAYING || gameState == PLAYER_SERVICE) {
 
       if (ball_speed_vector[2] > 0) {
-        ball_speed_vector[2] += 0.00006;
+        ball_speed_vector[2] += 0.0006;
       } else {
-        ball_speed_vector[2] -= 0.00006;
+        ball_speed_vector[2] -= 0.0006;
       }
 
-      ball_x += ball_speed_vector[0] * (timeElapsed / 1000.0f);
-      ball_y += ball_speed_vector[1] * (timeElapsed / 1000.0f);
-      ball_z += ball_speed_vector[2] * (timeElapsed / 1000.0f);
+      ball_x = ball.model_matrix[12] + ball_speed_vector[0] * (timeElapsed / 1000.0f);
+      ball_y = ball.model_matrix[13] + ball_speed_vector[1] * (timeElapsed / 1000.0f);
+      ball_z = ball.model_matrix[14] + ball_speed_vector[2] * (timeElapsed / 1000.0f);
     }
-    if (state == 2) {
+
+    if (gameState == PLAYING) {
 
           if ((currentTime - velocity_sample_time) > VELOCITY_SAMPLE_F) {
             player_stick.xprev = player_stick.x;
             player_stick.yprev = player_stick.y;
             velocity_sample_time = currentTime;
           }
-
 
       if ((ball_z + ball.width) < enemy_stick.z) {
 
@@ -1070,8 +1199,8 @@ void run_game() {
               }
               SDL_QueueAudio(dev, opponent_pong_sound, opponent_pong_sound_samples * sizeof(float));
           } else {
-            state = 4;
-            SDL_QueueAudio(dev, player_score_sound, player_score_sound_samples * sizeof(float));
+            gameState = PLAYER_WINS;
+            frames = 0;
           }
       } else if ((ball_z + ball.width) > player_stick.z) {
 
@@ -1081,78 +1210,76 @@ void run_game() {
                 ball_speed_vector[0] += (player_stick.x - player_stick.xprev) / (VELOCITY_SAMPLE_F / 1000.0f);
                 ball_speed_vector[1] += (player_stick.y - player_stick.yprev) / (VELOCITY_SAMPLE_F / 1000.0f);
                 SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(float));
-          } else if ((ball_z - ball.width) > -view_matrix[14]) {
-            state = 3;
-            SDL_QueueAudio(dev, opp_score_sound, opp_score_sound_samples * sizeof(float));
+
+          } else if ((ball_z - ball.width) < player_stick.z) {
+              gameState = PLAYER_LOSE;
+              frames = 0;
           }
       }
 
-      short wallhit = 0;
-      if (ball_x > ((stage.width / 2.0f) - (ball.width))) {
-         ball_x = (stage.width / 2.0f) - (ball.width);
-         ball_speed_vector[0] *= -1.0f;
-         SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
-      }
-      else if (ball_x < ((-stage.width / 2.0f) + (ball.width))) {
-         ball_x = (-stage.width / 2.0f) + (ball.width);
-         ball_speed_vector[0] *= -1.0f;
-        SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
-      }
+        short wallhit = 0;
+        if (ball_x > ((stage.width / 2.0f) - (ball.width))) {
+           ball_x = (stage.width / 2.0f) - (ball.width);
+           ball_speed_vector[0] *= -1.0f;
+           SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
+        }
+        else if (ball_x < ((-stage.width / 2.0f) + (ball.width))) {
+           ball_x = (-stage.width / 2.0f) + (ball.width);
+           ball_speed_vector[0] *= -1.0f;
+          SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
+        }
 
-      if (ball_y > ((stage.height / 2) - (ball.width))) {
-         ball_y = (stage.height / 2.0f) - (ball.width);
-         ball_speed_vector[1] *= -1.0f;
-         SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
-      }
-      else if (ball_y < ((-stage.height / 2) + (ball.width))) {
-         ball_y = (-stage.height / 2.0f) + (ball.width);
-         ball_speed_vector[1] *= -1.0f;
-        SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
-      }
-      if (wallhit) {
+        if (ball_y > ((stage.height / 2) - (ball.width))) {
+           ball_y = (stage.height / 2.0f) - (ball.width);
+           ball_speed_vector[1] *= -1.0f;
+           SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
+        }
+        else if (ball_y < ((-stage.height / 2) + (ball.width))) {
+           ball_y = (-stage.height / 2.0f) + (ball.width);
+           ball_speed_vector[1] *= -1.0f;
+          SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(float));
+        }
+        if (wallhit) {
 
-        wallhit = 0;
-      }
+          wallhit = 0;
+        }
 
-      ball.model_matrix[12] = ball_x;
-      ball.model_matrix[13] = ball_y;
-      ball.model_matrix[14] = ball_z;
+        ball.model_matrix[12] = ball_x;
+        ball.model_matrix[13] = ball_y;
+        ball.model_matrix[14] = ball_z;
 
-      if (ball_speed_vector[2] > 0.0f && enemy_stick.x < 0.0f) {
-        enemy_stick.x += rv * (timeElapsed / 1000.0f);
-        enemy_stick.y = enemy_stick.x * slope;
-        enemy_stick.model_matrix[12] = enemy_stick.x;
-        enemy_stick.model_matrix[13] = enemy_stick.y;
-
-      } else if (ball_speed_vector[2] < 0.0f) {
-          if ((currentTime - ball_calc_time_skip) > OPPONENT_SAMPLE_ADJUST) {
-            ball_calc_time_skip = currentTime;
-            to_position[0] = ball_x - enemy_stick.x;
-            to_position[1] = ball_y - enemy_stick.y ;
-
-            opp_vel[0] = (to_position[0] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
-            opp_vel[1] = (to_position[1] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
-
-          }
-          if (state == 2) {
-          enemy_stick.x += (opp_vel[0] * (timeElapsed / 1000.0f));
-          enemy_stick.y += (opp_vel[1] * (timeElapsed / 1000.0f));
+        if (ball_speed_vector[2] > 0.0f && enemy_stick.x < 0.0f) {
+          enemy_stick.x += rv * (timeElapsed / 1000.0f);
+          enemy_stick.y = enemy_stick.x * slope;
           enemy_stick.model_matrix[12] = enemy_stick.x;
           enemy_stick.model_matrix[13] = enemy_stick.y;
+
+        } else if (ball_speed_vector[2] < 0.0f) {
+            if ((currentTime - ball_calc_time_skip) > OPPONENT_SAMPLE_ADJUST) {
+              ball_calc_time_skip = currentTime;
+              to_position[0] = ball_x - enemy_stick.x;
+              to_position[1] = ball_y - enemy_stick.y ;
+
+              opp_vel[0] = (to_position[0] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
+              opp_vel[1] = (to_position[1] * fabs(ball_speed_vector[2])) /  fabs(enemy_stick.z - ball_z);
+
+            }
+            if (gameState == PLAYING) {
+            enemy_stick.x += (opp_vel[0] * (timeElapsed / 1000.0f));
+            enemy_stick.y += (opp_vel[1] * (timeElapsed / 1000.0f));
+            enemy_stick.model_matrix[12] = enemy_stick.x;
+            enemy_stick.model_matrix[13] = enemy_stick.y;
+          }
         }
       }
-    }
 
-    render();
+
+    render(frames++, timeElapsed / 1000.0f);
 
     timeElapsed = SDL_GetTicks() - currentTime;
 
-    int t = 16 - timeElapsed;
-    if (t > 0) {
-      //printf("%i\n", t);
-        //SDL_Delay(t);
-    }
-    if (SDL_PollEvent(&event)) {
+    int t = 17 - timeElapsed;
+    if (SDL_WaitEventTimeout(&event, t)) {
       if (event.type == SDL_QUIT) {
         loop = 0;
       } else if (event.type == SDL_KEYDOWN) {
@@ -1164,15 +1291,21 @@ void run_game() {
             break;
         }
       } else if (event.type == SDL_MOUSEMOTION) {
+          if (gameState != LOADING && gameState != FINISHED) {
             player_stick.x = (event.motion.x - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH;
-            player_stick.y = (-event.motion.y + (WINDOW_HEIGHT >> 1)) / (float)WINDOW_HEIGHT;
+            //(aspect * h -> w/h * h -> h)
+            player_stick.y = (event.motion.y - (WINDOW_HEIGHT >> 1)) / -(float)WINDOW_WIDTH;
             player_stick.model_matrix[12] = player_stick.x;
             player_stick.model_matrix[13] = player_stick.y;
-      } else if (event.type == SDL_MOUSEBUTTONUP && state == 1) {
-
-          if (ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
+          }
+      } else if (event.type == SDL_MOUSEBUTTONUP) {
+          if (gameState == START || gameState == FINISHED) {
+            frames = 0;
+            gameState = LOADING;
+            //task_prepare_players((timeElapsed / 1000.0f));
+          } else if (gameState == PLAYER_SERVICE && ball_in_stick(ball_x, ball_y, ball.width, &player_stick)) {
             SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(float));
-            state = 2;
+            gameState = PLAYING;
           }
       }
     }
@@ -1272,6 +1405,8 @@ float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
       if (*ang >= P_2PI)
         *ang -= P_2PI;
       break;
+    case NONE:
+      value = 0;
   }
   return value;
 }
@@ -1465,6 +1600,8 @@ int setup_text() {
   return 0;
 }
 
+void setup_game_data() {
+}
 int main(int argc, char** argv) {
   if (setup_sound() < 0) {
     exit(1);
@@ -1473,7 +1610,7 @@ int main(int argc, char** argv) {
   if (setup_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
     exit(1);
   }
-
+  setup_game_data();
   setup_stage();
   setup_overlay();
   setup_player_stick();
