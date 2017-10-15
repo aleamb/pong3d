@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <GL/glew.h>
-#include <GL/gl.h>
 #include <GL/glu.h>
 #include <string.h>
 #include <stdarg.h>
@@ -11,96 +10,17 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "pong3d.h"
+#include "geometry.h"
+
+
 
 #define ERRORMSG_MAX_LENGTH 256
-
-#define WINDOW_WIDTH 600
-#define WINDOW_HEIGHT 378
-
-#define STAGE_BLOCKS 7
-#define BALL_SEGMENTS 20
-
-#define STAGE_BLOCK_WIDTH 1.0f
-#define STAGE_BLOCK_LARGE (STAGE_BLOCK_WIDTH / 5.0f)
-#define STICK_WIDTH (STAGE_BLOCK_WIDTH / 6.0f)
-#define BALL_RADIUS (STAGE_BLOCK_WIDTH / 50.0f)
-#define VELOCITY_SAMPLE_F 550
-#define OPPONENT_SAMPLE_ADJUST 80
-#define SAMPLE_FREQ 44100
-#define NUMBER_OF_BALLS 12
-
-#define BALL_VERTICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS)
-#define BALL_INDICES_COUNT (BALL_SEGMENTS * BALL_SEGMENTS * 6 + 6)
-#define P_2PI 6.283185307f
-#define UNIT_ANGLE (P_2PI / BALL_SEGMENTS)
-#define VERTEX_SIZE 18 // position*4 + color*4 + normal*4 + texture*2 + extra*4
-#define OVERLAY_ALPHA 0.8f
-
-const float INITIAL_BALL_SPEED_VECTOR[] = { -0.1f,  0.05f, -1.3f };
-const float OPP_STICK_RETURN_SPEED_VECTOR[] = { -0.1f,  0.1f, 0.0f };
-const float OPP_STICK_SPEED_VECTOR[] = { -0.15f,  0.15f, 0.0f };
 
 
 SDL_Window* window;
 SDL_GLContext mainContext;
-/*
-typedef struct {
-  float x;
-  float y;
-  float z;
-  float w;
-} VECTOR;
 
-typedef struct {
-  float u;
-  float v;
-} TEXCOORD;
-
-typedef struct {
-  VECTOR position;
-  VECTOR color;
-  VECTOR normal;
-  TEXCOORD texcoord;
-  VECTOR extra;
-} VERTEX;
-*/
-typedef struct {
-  float* vertex;
-  int vertex_count;
-  GLuint vbo;
-  GLuint texture;
-  float *positions;
-  float *colors;
-  float *normals;
-  float *texcoords;
-  float *aux_buffer1;
-  float *aux_buffer2;
-  unsigned int* elements;
-  int elements_count;
-  GLuint mode;
-  GLuint vertexType;
-  float x;
-  float y;
-  float z;
-  float xprev;
-  float yprev;
-  float zprev;
-  GLuint vao;
-  GLuint ebo;
-  float width;
-  float height;
-  float large;
-  float model_matrix[16];
-}PONG_ELEMENT;
-
-PONG_ELEMENT player_stick;
-PONG_ELEMENT enemy_stick;
-PONG_ELEMENT ball;
-PONG_ELEMENT stage;
-PONG_ELEMENT ball_shadow;
-PONG_ELEMENT stick_shadow;
-PONG_ELEMENT ball_mark;
-PONG_ELEMENT overlay;
 PONG_ELEMENT startText;
 
 
@@ -284,14 +204,7 @@ int setup_screen(int width, int height) {
   return 0;
 }
 
-void normalize(float* mesh, int size) {
-  for (int i = 0; i < size; i += 3) {
-    float length = sqrt(mesh[i] * mesh[i] + mesh[i + 1] * mesh[i + 1] + mesh[i + 2] * mesh[i + 2]);
-    mesh[i] /= length;
-    mesh[i + 1] /= length;
-    mesh[i + 2] /= length;
-  }
-}
+
 void create_vao(PONG_ELEMENT* element) {
   glGenVertexArrays(1, &element->vao);
   glBindVertexArray(element->vao);
@@ -363,50 +276,6 @@ GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...) {
       *result = 0;
     }
     return program_id;
-}
-
-void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out) {
-  const float
-    y_scale = 1.0 / tan(M_PI / 180.0 * (fovy / 2.0)),
-    x_scale = y_scale / aspect_ratio,
-    frustum_length = far_plane - near_plane;
-
-  out[1] = 0.0f;
-  out[2] = 0.0f;
-  out[3] = 0.0f;
-  out[4] = 0.0f;
-  out[6] = 0.0f;
-  out[7] = 0.0f;
-  out[8] = 0.0f;
-  out[9] = 0.0f;
-  out[12] = 0.0f;
-  out[13] = 0.0f;
-  out[15] = 0.0f;
-  out[0] = x_scale;
-  out[5] = y_scale;
-  out[10] = -((far_plane + near_plane) / frustum_length);
-  out[11] = -1;
-  out[14] = -((2 * near_plane * far_plane) / frustum_length);
-}
-
-void load_identity_matrix(float *out) {
-
-  out[0] = 1.0f;
-  out[1] = 0.0f;
-  out[2] = 0.0f;
-  out[3] = 0.0f;
-  out[4] = 0.0f;
-  out[5] = 1.0f;
-  out[6] = 0.0f;
-  out[7] = 0.0f;
-  out[8] = 0.0f;
-  out[9] = 0.0f;
-  out[10] = 1.0f;
-  out[11] = 0.0f;
-  out[12] = 0.0f;
-  out[13] = 0.0f;
-  out[14] = 0.0f;
-  out[15] = 1.0f;
 }
 
 
@@ -495,307 +364,6 @@ int setup_renderer(int width, int height) {
 }
 
 
-void assign_position_to_vertex(float* dest, int dest_index, float x, float y, float z) {
-  int dest_offset = dest_index * VERTEX_SIZE;
-  dest[dest_offset] = x;
-  dest[dest_offset + 1] = y;
-  dest[dest_offset + 2] = z;
-  dest[dest_offset + 3] = 1.0f;
-}
-
-void cp_position_to_vertex(float* src, float* dest, int src_index, int dest_index) {
-  int src_offset = src_index * 3;
-  int dest_offset = dest_index * VERTEX_SIZE;
-  dest[dest_offset] = src[src_offset];
-  dest[dest_offset + 1] = src[src_offset + 1];
-  dest[dest_offset + 2] = src[src_offset + 2];
-  dest[dest_offset + 3] = 1.0f;
-}
-
-void assign_color_to_vertex(float* vertex_buffer, int index, float r, float g, float b, float a) {
-  int offset = index * VERTEX_SIZE + 4;
-  vertex_buffer[offset] = r;
-  vertex_buffer[offset + 1] = g;
-  vertex_buffer[offset + 2] = b;
-  vertex_buffer[offset + 3] = a;
-}
-void assign_uv_to_vertex(float* vertex_buffer, int index, float u, float v) {
-  int offset = index * VERTEX_SIZE + 12;
-  vertex_buffer[offset] = u;
-  vertex_buffer[offset + 1] = v;
-}
-
-void setup_stick(PONG_ELEMENT* stick) {
-
-  float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
-
-  stick->vertexType = GL_TRIANGLES;
-
-  stick->width = STICK_WIDTH;
-  stick->height = STICK_WIDTH / aspect;
-
-  float width2 = stick->width / 2.0f;
-  float height2 = stick->height / 2.0f;
-
-  stick->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
-  stick->vertex_count = 4;
-  stick->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
-  stick->elements_count = 6;
-
-  assign_position_to_vertex(stick->vertex, 0, -width2, -height2, stick->z);
-  assign_color_to_vertex(stick->vertex, 0, 0.5, 0.5, 0.5, 0.5);
-  assign_uv_to_vertex(stick->vertex, 0, 0, 0);
-
-  assign_position_to_vertex(stick->vertex, 1, -width2, height2, stick->z);
-  assign_color_to_vertex(stick->vertex, 1, 0.5, 0.5, 0.5, 0.5);
-  assign_uv_to_vertex(stick->vertex, 1, 0, 1);
-
-  assign_position_to_vertex(stick->vertex, 2, width2, height2, stick->z);
-  assign_color_to_vertex(stick->vertex, 2, 0.5, 0.5, 0.5, 0.5);
-  assign_uv_to_vertex(stick->vertex, 2, 1, 1);
-
-  assign_position_to_vertex(stick->vertex, 3, width2, -height2, stick->z);
-  assign_color_to_vertex(stick->vertex, 3, 0.5, 0.5, 0.5, 0.5);
-  assign_uv_to_vertex(stick->vertex, 3, 1, 0);
-
-  stick->elements[0] = 0;
-  stick->elements[1] = 1;
-  stick->elements[2] = 2;
-  stick->elements[3] = 2;
-  stick->elements[4] = 3;
-  stick->elements[5] = 0;
-
-  load_identity_matrix(stick->model_matrix);
-
-}
-
-void setup_player_stick() {
-  player_stick.z = 0.0f;
-  setup_stick(&player_stick);
-}
-
-void setup_enemy_stick() {
-  enemy_stick.z = -(STAGE_BLOCKS * STAGE_BLOCK_LARGE);
-  setup_stick(&enemy_stick);
-}
-
-void setup_overlay() {
-  float alpha = OVERLAY_ALPHA;
-  overlay.width = 1.0f;
-  overlay.height = 1.0f;
-
-  overlay.vertexType = GL_TRIANGLES;
-
-  float width2 = overlay.width / 2.0f;
-  float height2 = overlay.height / 2.0f;
-
-  overlay.vertex = (float*)calloc(12 * VERTEX_SIZE, sizeof(float));
-  overlay.vertex_count = 4;
-  overlay.elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
-
-  overlay.elements_count = 6;
-
-  assign_position_to_vertex(overlay.vertex, 0, -width2, -height2, 0.0f);
-  assign_color_to_vertex(overlay.vertex, 0, 0.0f, 0.0f, 0.0f, alpha);
-
-  assign_position_to_vertex(overlay.vertex, 1, -width2, height2, 0.0f);
-  assign_color_to_vertex(overlay.vertex, 1, 0.0f, 0.0f, 0.0f, alpha);
-
-  assign_position_to_vertex(overlay.vertex, 2, width2, height2, 0.0f);
-  assign_color_to_vertex(overlay.vertex, 2, 0.0f, 0.0f, 0.0f, alpha);
-
-  assign_position_to_vertex(overlay.vertex, 3, width2, -height2, 0.0f);
-  assign_color_to_vertex(overlay.vertex, 3, 0.0f, 0.0f, 0.0f, alpha);
-
-  overlay.elements[0] = 0;
-  overlay.elements[1] = 1;
-  overlay.elements[2] = 2;
-  overlay.elements[3] = 2;
-  overlay.elements[4] = 3;
-  overlay.elements[5] = 0;
-
-  load_identity_matrix(overlay.model_matrix);
-  overlay.model_matrix[14] = 0.0f;
-}
-
-void setup_stage() {
-
-  int vertex = 0;
-  float aspect = (float)WINDOW_WIDTH / WINDOW_HEIGHT;
-  float x_width, y_height;
-  stage.width = STAGE_BLOCK_WIDTH;
-  stage.height = STAGE_BLOCK_WIDTH / aspect;
-  stage.large = STAGE_BLOCK_LARGE;
-
-  stage.vertexType = GL_QUADS;
-
-  x_width = stage.width / 2.0f;
-  y_height = stage.height / 2.0f;
-
-  stage.vertex_count =  24 * STAGE_BLOCKS;
-  stage.elements_count = 0;
-
-  stage.vertex = (float*)calloc( VERTEX_SIZE * stage.vertex_count, sizeof(float));
-
-  int tmp_vertex_count = STAGE_BLOCKS * 8;
-  float *tmp_vertex = (float*)malloc(sizeof(float) * 3 * tmp_vertex_count);
-
-  for (int i = 0; i <= STAGE_BLOCKS; i++) {
-    float z_depth  = (-stage.large * (float)i);
-
-    tmp_vertex[vertex++] = -x_width;
-    tmp_vertex[vertex++] = y_height;
-    tmp_vertex[vertex++] = z_depth;
-
-    tmp_vertex[vertex++] = x_width;
-    tmp_vertex[vertex++] = y_height;
-    tmp_vertex[vertex++] = z_depth;
-
-    tmp_vertex[vertex++] = x_width;
-    tmp_vertex[vertex++] = -y_height;
-    tmp_vertex[vertex++] = z_depth;
-
-    tmp_vertex[vertex++] = -x_width;
-    tmp_vertex[vertex++] = -y_height;
-    tmp_vertex[vertex++] =  z_depth;
-  }
-  int triangle1[3];
-  int triangle2[3];
-  float r = 0.0;
-  float g = 1.0f;
-  float b = 0.0f;
-  float a = 0.2f;
-  vertex = 0;
-
-  for (int i = 0, j = 0; i < STAGE_BLOCKS * 4; i++, j+=4) {
-      triangle1[0] = i;
-      triangle1[1] = i + 4;
-      triangle1[2] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
-
-      triangle2[0] = i;
-      triangle2[1] = ((i + 1) % 4) == 0 ? i + 1 : i + 5;
-      triangle2[2] = ((i + 1) % 4) == 0 ? i - 3 : i + 1;
-
-      if (i > 0 && i % 4 == 0) {
-        a /= 2.0f;
-      }
-      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle1[0], j);
-      assign_color_to_vertex(stage.vertex, j, r, g, b, a);
-
-      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle1[1], j + 1);
-      assign_color_to_vertex(stage.vertex, j + 1, r, g, b, a);
-
-      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle1[2], j + 2);
-      assign_color_to_vertex(stage.vertex, j + 2, r, g, b, a);
-
-      cp_position_to_vertex(tmp_vertex, stage.vertex, triangle2[2], j + 3);
-      assign_color_to_vertex(stage.vertex, j + 3, r, g, b, a);
-  }
-  free(tmp_vertex);
-  load_identity_matrix(stage.model_matrix);
-}
-
-void setup_ball() {
-
-  int initial_index[] = {0, 5, 6, 6, 1, 0};
-  float theta;
-  float phi;
-  int vertex = 0;
-  int m, p;
-  ball.vertexType = GL_TRIANGLES;
-  ball.width = BALL_RADIUS;
-
-  ball.vertex = (float*)malloc(sizeof(float) * VERTEX_SIZE * BALL_VERTICES_COUNT);
-  ball.elements = (unsigned int*)malloc(sizeof(unsigned int) * BALL_INDICES_COUNT);
-
-  ball.vertex_count = BALL_VERTICES_COUNT;
-  ball.elements_count = BALL_INDICES_COUNT;
-
-  memcpy(ball.elements, initial_index, sizeof(initial_index));
-
-  for (p = 0, theta = -M_PI_2; p < BALL_SEGMENTS; p++, theta += UNIT_ANGLE)
-  {
-    for (m = 0, phi = 0.0f; m < BALL_SEGMENTS; m++, phi += UNIT_ANGLE)
-    {
-      assign_position_to_vertex(
-        ball.vertex, vertex,
-        cos(theta) * sin(phi) * ball.width,
-        sin(theta) * ball.width,
-        cos(theta) * cos(phi) * ball.width
-      );
-      assign_color_to_vertex(ball.vertex, vertex, 1.0, 1.0, 1.0, 1.0);
-      vertex++;
-    }
-  }
-  for (int i = 0, j = 0; i < (ball.vertex_count / 2); i++, j += 6) {
-      ball.elements[j] = i;
-      ball.elements[j + 1] = i + 20;
-      ball.elements[j + 2] = ((i + 1) % 20) == 0 ? i + 1 : i + 21;
-
-      ball.elements[j + 3] = i;
-      ball.elements[j + 4] = ((i + 1) % 20) == 0 ? i + 1 : i + 21;
-      ball.elements[j + 5] = ((i + 1) % 20) == 0 ? i - 19 : i + 1;
-  }
-
-  load_identity_matrix(ball.model_matrix);
-  ball.model_matrix[14] = -1.0f;
-}
-void build_circle(PONG_ELEMENT* element, float radius, int segments, float shadow) {
-  element->vertex = (float*)calloc((segments + 2) * VERTEX_SIZE, sizeof(float));
-  element->vertex_count = (segments + 2);
-  element->elements_count = 0;
-  element->vertexType = GL_TRIANGLE_FAN;
-  int vertex = 1;
-  int p;
-  float unit_angle = P_2PI / (float)segments;
-  float theta;
-  element->width = radius;
-  assign_position_to_vertex(element->vertex, 0, 0.0f, 0.0f, 0.0f);
-  assign_color_to_vertex(element->vertex, 0, 1.0, 1.0, 1.0, shadow);
-  for (p = 0, theta = 0; p <= segments; p++, theta -= unit_angle) {
-      assign_position_to_vertex(element->vertex, vertex, 0.0f, sin(theta) * element->width, -cos(theta) * element->width);
-      assign_color_to_vertex(element->vertex, vertex, 1.0, 1.0, 1.0, shadow);
-      vertex++;
-  }
-  load_identity_matrix(ball_shadow.model_matrix);
-}
-void setup_ball_shadow() {
-  load_identity_matrix(ball_shadow.model_matrix);
-  build_circle(&ball_shadow, BALL_RADIUS, BALL_SEGMENTS, 0.2f);
-}
-
-void setup_ball_marks() {
-  build_circle(&ball_mark, BALL_RADIUS / 2.0f, BALL_SEGMENTS, 1.0f);
-}
-void setup_stick_shadows() {
-
-  int elements[] = {0, 1, 2, 0, 2, 3};
-  stick_shadow.vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
-  stick_shadow.elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
-  stick_shadow.vertex_count = 4;
-  stick_shadow.elements_count = 6;
-  stick_shadow.width = STICK_WIDTH ;
-  stick_shadow.height = STAGE_BLOCK_WIDTH / 50;
-  stick_shadow.z = -STAGE_BLOCK_WIDTH / 50;
-  stick_shadow.vertexType = GL_TRIANGLES;
-  float width2 = stick_shadow.width / 2.0f;
-  float height2 = stick_shadow.height / 2.0f;
-
-  assign_position_to_vertex(stick_shadow.vertex, 0, -width2, -height2, stick_shadow.z);
-  assign_color_to_vertex(stick_shadow.vertex, 0, 1.0, 1.0, 1.0, 0.2);
-
-  assign_position_to_vertex(stick_shadow.vertex, 1, -width2, height2, stick_shadow.z);
-  assign_color_to_vertex(stick_shadow.vertex, 1, 1.0, 1.0, 1.0, 0.2);
-
-  assign_position_to_vertex(stick_shadow.vertex, 2, width2, height2, stick_shadow.z);
-  assign_color_to_vertex(stick_shadow.vertex, 2, 1.0, 1.0, 1.0, 0.2);
-
-  assign_position_to_vertex(stick_shadow.vertex, 3, width2, -height2, stick_shadow.z);
-  assign_color_to_vertex(stick_shadow.vertex, 3, 1.0, 1.0, 1.0, 0.2);
-
-  memcpy(stick_shadow.elements, elements, sizeof(elements));
-  load_identity_matrix(stick_shadow.model_matrix);
-}
 
 void render_pong_element(PONG_ELEMENT* element) {
   glBindVertexArray(element->vao);
@@ -1129,6 +697,8 @@ void render(int frames, float delta) {
   }
 }
 void run_game() {
+
+
   int loop = 1;
   unsigned int timeElapsed = 0;
   unsigned int lastTime, currentTime, velocity_sample_time = 0;
@@ -1147,9 +717,6 @@ void run_game() {
 
   currentTime = lastTime = 0;
   velocity_sample_time = lastTime;
-
-  player_stick.xprev = 0.0f;
-  player_stick.yprev = 0.0f;
 
   memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
 
@@ -1601,12 +1168,14 @@ int setup_text() {
 }
 
 void setup_game_data() {
+
 }
+
+
 int main(int argc, char** argv) {
   if (setup_sound() < 0) {
     exit(1);
   }
-
   if (setup_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
     exit(1);
   }
