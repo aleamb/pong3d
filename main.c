@@ -24,61 +24,18 @@ SDL_GLContext mainContext;
 PONG_ELEMENT startText;
 
 
-GLuint vertex_shader;
-GLuint fragment_shader;
 GLuint text_fragment_shader;
-GLuint program;
+
+
 GLuint textTexture;
 GLuint text_program;
 
-GLuint projectionMatrixId;
-GLuint viewMatrixId;
-GLuint modelMatrixId;
 GLuint projectionMatrixId_text;
 GLuint viewMatrixId_text;
 GLuint modelMatrixId_text;
-GLchar errormsg[ERRORMSG_MAX_LENGTH];
+i
 
 float ball_speed_vector[3];
-
-const GLchar* vertex_shader_source =
-"#version 400 core\n \
-in vec4 in_position;\n \
-in vec4 in_color;\n \
-in vec4 in_normal;\n \
-in vec2 in_uv;\n \
-in vec4 extra;\n \
-uniform mat4 projectionMatrix;\n \
-uniform mat4 viewMatrix;\n \
-uniform mat4 modelMatrix;\n \
-out vec4 outColor;\n \
-out vec2 outUV;\n \
-out vec4 outNormal;\n \
-out vec4 outExtra;\n \
-void main(void) {\n \
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * in_position;\n \
-  outColor = in_color;\n \
-  outUV = in_uv;\n \
-  outNormal = in_normal;\n \
-  outExtra = extra;\n \
-}";
-
-const GLchar* fragment_shader_source =
-"#version 400 core\n \
-in vec4 outColor;\n \
-in vec2 outUV;\n \
-out vec4 color;\n \
-uniform bool stageWireframe;\n \
-uniform sampler2D tex;\n \
-uniform float alpha;\n \
-void main(void) {\n \
-    if (stageWireframe) {\n \
-      color = outColor + vec4(0.0, 0.0, 0.0, 0.2);\n \
-    }\n \
-    else {\n \
-      color = vec4(outColor.xyz, outColor.w - alpha);\n \
-    }\n \
-}";
 
 const GLchar* fragment_shader_text_source =
 "#version 400 core\n \
@@ -89,9 +46,6 @@ void main(void) {\n \
     color = vec4(1.0, 1.0, 1.0, texture(tex, outUV).r);\n \
 }";
 
-
-float projection_matrix[16];
-float view_matrix[16];
 
 SDL_AudioSpec want, have;
 SDL_AudioDeviceID dev;
@@ -204,177 +158,6 @@ int setup_screen(int width, int height) {
   return 0;
 }
 
-
-void create_vao(PONG_ELEMENT* element) {
-  glGenVertexArrays(1, &element->vao);
-  glBindVertexArray(element->vao);
-
-  glGenBuffers(1, &element->vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, element->vbo);
-  glBufferData(GL_ARRAY_BUFFER, element->vertex_count * VERTEX_SIZE * sizeof(float), element->vertex, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, 0);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 4);
-  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 8);
-  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 12);
-  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(float) * VERTEX_SIZE, (char*)NULL + sizeof(float) * 14);
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-  glEnableVertexAttribArray(2);
-  glEnableVertexAttribArray(3);
-  glEnableVertexAttribArray(4);
-
-  if (element->elements_count > 0) {
-    glGenBuffers(1, &element->ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element->ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(unsigned int), element->elements, GL_STATIC_DRAW);
-  }
-  glBindVertexArray(0);
-}
-
-GLuint build_shader(GLenum type, const GLchar* source, GLint* result, GLchar *errormsg) {
-  GLuint id = glCreateShader(type);
-  glShaderSource(id, 1, &source, NULL);
-  glCompileShader(id);
-  int params;
-  glGetShaderiv(id, GL_COMPILE_STATUS, &params);
-  if (params == GL_FALSE) {
-    *result = -1;
-    if (errormsg != NULL) {
-        int maxLength;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
-        glGetShaderInfoLog(id,
-          (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
-    }
-    return -1;
-  } else {
-    *result = 0;
-  }
-  return id;
-}
-
-GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...) {
-    va_list ap;
-    GLuint program_id = glCreateProgram();
-    va_start(ap, errormsg);
-    for(int j = 0; j < count; j++) {
-      GLuint shader = va_arg(ap, GLuint);
-      glAttachShader(program_id, shader);
-    }
-    va_end(ap);
-    glLinkProgram(program_id);
-    GLint params;
-    glGetProgramiv(program_id, GL_LINK_STATUS, &params);
-    if (params == GL_FALSE) {
-      *result = -1;
-      if (errormsg != NULL) {
-        int maxLength;
-        glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &maxLength);
-        glGetProgramInfoLog(program_id,
-          (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
-      }
-    } else {
-      *result = 0;
-    }
-    return program_id;
-}
-
-
-int setup_renderer(int width, int height) {
-
-  GLenum err = glewInit();
-  if (err != GLEW_OK) {
-    fprintf(stderr, "OpenGL error: %s\n", glewGetErrorString(err));
-    return -1;
-  }
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glDisable(GL_CULL_FACE);
-  glPolygonMode(GL_FRONT, GL_FILL);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LESS);
-
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  int result;
-  vertex_shader = build_shader(GL_VERTEX_SHADER, vertex_shader_source, &result, errormsg);
-  if (result != 0) {
-      fprintf( stderr, "Compile vertex shader failed: %s\n", errormsg);
-      return -1;
-  }
-  fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_source, &result, errormsg);
-  if (result != 0) {
-      fprintf( stderr, "Compile fragment shader failed: %s\n", errormsg);
-      return -1;
-  }
-  program = build_shaders_program(2, &result, errormsg, vertex_shader, fragment_shader);
-  if (result != 0) {
-      fprintf( stderr, "Links shaders program failed: %s\n", errormsg);
-      return -1;
-  }
-  text_fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_text_source, &result, errormsg);
-  if (result != 0) {
-      fprintf( stderr, "Text fragment shader build failed: %s\n", errormsg);
-      return -1;
-  }
-  text_program = build_shaders_program(2, &result, errormsg, vertex_shader, text_fragment_shader);
-  if (result != 0) {
-      fprintf( stderr, "Text shaders program failed: %s\n", errormsg);
-      return -1;
-  }
-
-  create_vao(&player_stick);
-  create_vao(&enemy_stick);
-  create_vao(&ball);
-  create_vao(&stage);
-  create_vao(&ball_shadow);
-  create_vao(&ball_mark);
-  create_vao(&stick_shadow);
-  create_vao(&overlay);
-
-  load_identity_matrix(view_matrix);
-
-  // perspective Z compensation: 0.5 / tan(fov / 2) / aspect
-  view_matrix[14] = -0.866f / ((float)WINDOW_WIDTH / WINDOW_HEIGHT);
-  create_projection_matrix(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.001f, 10.0f, projection_matrix);
-
-  glUseProgram(program);
-  projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
-  viewMatrixId = glGetUniformLocation(program, "viewMatrix");
-  modelMatrixId = glGetUniformLocation(program, "modelMatrix");
-  glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
-  glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
-
-  globalAlpha = glGetUniformLocation(program, "alpha");
-  glUniform1f(globalAlpha, 0.0);
-
-
-  glUseProgram(text_program);
-  projectionMatrixId_text = glGetUniformLocation(text_program, "projectionMatrix");
-  viewMatrixId_text = glGetUniformLocation(text_program, "viewMatrix");
-  modelMatrixId_text = glGetUniformLocation(text_program, "modelMatrix");
-  glUniformMatrix4fv(projectionMatrixId_text, 1, GL_FALSE, projection_matrix);
-  glUniformMatrix4fv(viewMatrixId_text, 1, GL_FALSE, view_matrix);
-
-
-  glUseProgram(program);
-
-  return 0;
-}
-
-
-
-void render_pong_element(PONG_ELEMENT* element) {
-  glBindVertexArray(element->vao);
-  glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, element->model_matrix);
-  if (element->elements_count > 0) {
-    glDrawElements(element->vertexType, element->elements_count, GL_UNSIGNED_INT, 0);
-  } else {
-    glDrawArrays(element->vertexType, 0, element->vertex_count);
-  }
-  glBindVertexArray(0);
-}
 
 void render_shadows(PONG_ELEMENT* stage, PONG_ELEMENT* ball, PONG_ELEMENT* stick) {
 

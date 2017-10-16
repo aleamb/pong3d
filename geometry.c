@@ -412,3 +412,20 @@ void create_elements(const float window_width, const float window_height)  {
 	setup_stick_shadows(&stick_shadow, stick_width, stick_width / 50.0f, shadows_color);
 }
 
+void free_pong_element(PONG_ELEMENT* element) {
+  free(element->vertex);
+  if (element->elements_count > 0) {
+    free(element->elements);
+  }
+}
+
+void dispose_elements() {
+  free_pong_element(&player_stick);
+  free_pong_element(&opponent_stick);
+  free_pong_element(&ball);
+  free_pong_element(&stage);
+  free_pong_element(&ball_shadow);
+  free_pong_element(&stick_shadow);
+  free_pong_element(&ball_mark);
+}
+
