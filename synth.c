@@ -43,14 +43,14 @@ float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
   return value;
 }
 
-int synthetize(SYNTH* synthParams, float** out_samples, int sample_freq) {
+int synthetize(SYNTH* synthParams, sample_t** out_samples, int sample_freq) {
   int state = 0;
   float value;
   float oldValue = 0.0f;
   float volume = synthParams->volume;
 
   int samples_count = (float)sample_freq * synthParams->totalTime;
-  float *samples = (float*)malloc(samples_count * sizeof(float));
+  sample_t *samples = (sample_t*)malloc(samples_count * sizeof(sample_t));
 
   int attackTimeSamples = (synthParams->attackTime * (float)sample_freq);
   int decayTimeSamples = (synthParams->decayTime * (float)sample_freq);
@@ -104,7 +104,7 @@ int synthetize(SYNTH* synthParams, float** out_samples, int sample_freq) {
         }
         break;
     }
-    samples[i] = volume * value;
+    samples[i] = (sample_t)(volume * value);
   }
 
   // simple reverb
@@ -113,14 +113,14 @@ int synthetize(SYNTH* synthParams, float** out_samples, int sample_freq) {
   int delaySamples = (delayTime * (float)sample_freq);
   if (delaySamples > 0) {
     for (int i = 0; i < samples_count - delaySamples; i++) {
-    samples[i + delaySamples] += samples[i] * reverbSize;
+    samples[i + delaySamples] += samples[i] * (sample_t)reverbSize;
     }
   }
   *out_samples = samples;
   return samples_count;
 }
 
-void free_samples(float *samples) {
+void free_samples(sample_t *samples) {
 	free(samples);
 }
 

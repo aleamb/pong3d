@@ -1,6 +1,7 @@
 #ifndef _SYNTH_H_
 #define _SYNTH_H_
 
+typedef float sample_t;
 
 typedef enum {
     NONE,
@@ -27,4 +28,8 @@ typedef struct {
   float reverbSize;
 } SYNTH;
 
+int synthetize(SYNTH* synth_params, sample_t** samples_buffer, int sample_freq);
+void free_samples(sample_t* samples); 
+
 #endif
+
