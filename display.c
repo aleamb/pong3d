@@ -1,5 +1,5 @@
 #include "display.h"
-#include <SDL2/sdl.h>
+#include <SDL2/SDL.h>
 
 SDL_Window* window;
 SDL_GLContext mainContext;
