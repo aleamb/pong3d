@@ -44,10 +44,14 @@ const GLchar* fragment_shader_source =
 		out vec4 color;\n \
 		uniform bool stageWireframe;\n \
 		uniform sampler2D tex;\n \
+		uniform bool renderText;\n \
 		uniform float alpha;\n \
 		void main(void) {\n \
 			if (stageWireframe) {\n \
 				color = outColor + vec4(0.0, 0.0, 0.0, 0.2);\n \
+			}\n \
+			else if (renderText) {\n \
+				color = vec4(1.0, 1.0, 1.0, texture(tex, outUV).r);\n \
 			}\n \
 			else {\n \
 				color = vec4(outColor.xyz, outColor.w - alpha);\n \

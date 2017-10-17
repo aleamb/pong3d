@@ -17,8 +17,6 @@ int player_score_sound_samples;
 sample_t* opp_score_sound;
 int opp_score_sound_samples;
 
-sample_t* start_sound;
-int start_sound_samples;
 
 sample_t* wall_hit_sound;
 int wall_hit_sound_samples;
@@ -133,11 +131,15 @@ void play_player_wins_sound() {
 void play_opponent_wins_sound() {
 	SDL_QueueAudio(dev, opp_score_sound, opp_score_sound_samples * sizeof(sample_t));
 }
+void play_wall_hit_sound() {
+	SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(sample_t));
+}
 
 void dispose_sound() {
 	free_samples(player_pong_sound); 
 	free_samples(opponent_pong_sound); 
 	free_samples(player_score_sound); 
 	free_samples(opp_score_sound); 
+	free_samples(wall_hit_sound);
 }
 
