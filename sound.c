@@ -2,9 +2,6 @@
 #include "synth.h"
 #include <SDL2/SDL.h>
 
-SDL_AudioSpec want, have;
-SDL_AudioDeviceID dev;
-
 sample_t* player_pong_sound;
 int player_pong_sound_samples;
 
@@ -21,29 +18,7 @@ int opp_score_sound_samples;
 sample_t* wall_hit_sound;
 int wall_hit_sound_samples;
 
-int setup_sound(int sample_freq) {
-	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-		fprintf( stderr, "Sound initialization failed: %s\n", SDL_GetError( ) );
-		return -1;
-	}
-
-
-	want.freq = sample_freq;
-	want.format = AUDIO_F32SYS;
-	want.channels = 1;
-	want.samples = 2048;
-	want.callback = NULL;
-
-	dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-	if (dev == 0) {
-		fprintf( stderr, "Failed opening audio device: %s\n", SDL_GetError( ) );
-		return -1;
-	} else if (have.format != want.format) {
-		fprintf( stderr, "Failed getting sample format (AUDIO_F32SYS)\n");
-		return -1;
-	}
-	//
-	SDL_PauseAudioDevice(dev, 0);
+int init_sound(int sample_freq) {
 	SYNTH synthParams;
 
 	synthParams.totalTime = 0.1f;
@@ -116,6 +91,7 @@ int setup_sound(int sample_freq) {
 
 void play_start_sound() {
 	SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(sample_t));
+
 }
 void play_player_pong_sound() {
 	SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(sample_t));
