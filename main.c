@@ -1,8 +1,10 @@
 #include "msys.h"
+#include "sound.h"
 #include "geometry.h"
 #include "renderer.h"
 #include "text.h"
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define WINDOW_WIDTH 600
 #define WINDOW_HEIGHT 378
@@ -39,11 +41,11 @@ void cleanup();
 
 int main(int argc, char** argv) {
 	
-	if (sys_init_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
+	if (sys_init_video(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
 		cleanup();
 		exit(1);
 	}
-	if (sys_init_sound(SAMPLE_RATE) < 0) {
+	if (init_sound(SAMPLE_RATE) < 0) {
 		cleanup();
 		exit(1);
 	}
@@ -63,8 +65,9 @@ int main(int argc, char** argv) {
 void cleanup() {
 	dispose_elements();
 	dispose_renderer();
-	sys_dispose_screen();
-	sys_dispose_sound();
+	dispose_text_renderer();
+	sys_dispose_video();
+	dispose_sound();
 	sys_quit();
 }
 /*

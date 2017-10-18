@@ -1,5 +1,6 @@
 #include "sound.h"
 #include "synth.h"
+#include "msys.h"
 #include <SDL2/SDL.h>
 
 sample_t* player_pong_sound;
@@ -14,11 +15,18 @@ int player_score_sound_samples;
 sample_t* opp_score_sound;
 int opp_score_sound_samples;
 
-
 sample_t* wall_hit_sound;
 int wall_hit_sound_samples;
 
+sample_t* start_sound;
+int start_sound_samples;
+
+
 int init_sound(int sample_freq) {
+
+	if (sys_init_sound(sample_freq) < 0) {
+		return -1;
+	}
 	SYNTH synthParams;
 
 	synthParams.totalTime = 0.1f;
@@ -90,25 +98,25 @@ int init_sound(int sample_freq) {
 }
 
 void play_start_sound() {
-	SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(sample_t));
+	sys_play_sound(start_sound, start_sound_samples * sizeof(sample_t));
 
 }
 void play_player_pong_sound() {
-	SDL_QueueAudio(dev, player_pong_sound, player_pong_sound_samples * sizeof(sample_t));
+	sys_play_sound(player_pong_sound, player_pong_sound_samples * sizeof(sample_t));
 }
 void play_opponent_pong_sound() {
-	SDL_QueueAudio(dev, opponent_pong_sound, opponent_pong_sound_samples * sizeof(sample_t));
+	sys_play_sound(opponent_pong_sound, opponent_pong_sound_samples * sizeof(sample_t));
 }
 
 void play_player_wins_sound() {
-	SDL_QueueAudio(dev, player_score_sound, player_score_sound_samples * sizeof(sample_t));
+	 sys_play_sound(player_score_sound, player_score_sound_samples * sizeof(sample_t));
 }
 
 void play_opponent_wins_sound() {
-	SDL_QueueAudio(dev, opp_score_sound, opp_score_sound_samples * sizeof(sample_t));
+	sys_play_sound( opp_score_sound, opp_score_sound_samples * sizeof(sample_t));
 }
 void play_wall_hit_sound() {
-	SDL_QueueAudio(dev, wall_hit_sound, wall_hit_sound_samples * sizeof(sample_t));
+	sys_play_sound( wall_hit_sound, wall_hit_sound_samples * sizeof(sample_t));
 }
 
 void dispose_sound() {

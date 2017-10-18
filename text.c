@@ -11,6 +11,8 @@ GLuint modelMatrixUniform;
 FT_Library ft;
 FT_Face face;
 
+int freetype_initialized = 0;
+
 static float text_model_matrix[16];
 
 void render_text(const char* text, float x, float y, float scale, int font_size) {
@@ -90,6 +92,7 @@ int init_text_renderer() {
 		fprintf(stderr, "Could not init freetype library\n");
 		return -1;
 	}
+	freetype_initialized = 1;
 	if(FT_New_Face(ft, "./fonts/main.ttf", 0, &face)) {
 		fprintf(stderr, "Could not open font\n");
 		return -1;
@@ -101,5 +104,11 @@ int init_text_renderer() {
 	// generate start screen text
 	load_identity_matrix(text_model_matrix);
 	return 0;
+}
+
+void dispose_text_renderer() {
+	if (freetype_initialized) {
+		FT_Done_FreeType(ft);
+	}
 }
 

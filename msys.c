@@ -71,7 +71,7 @@ void sys_play_sound(void *samples, int data_size) {
 	SDL_QueueAudio(dev, samples, data_size);
 }
 
-void sys_dispose_screen() {
+void sys_dispose_video() {
 	if (gl_initialized) {
 		SDL_GL_DeleteContext(mainContext);
 	}

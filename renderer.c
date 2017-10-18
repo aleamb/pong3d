@@ -37,7 +37,7 @@ const GLchar* vertex_shader_source =
 			gl_Position = projectionMatrix * viewMatrix * modelMatrix * in_position;\n \
 				outColor = in_color;\n \
 				outUV = in_uv;\n \
-				outNormal = rmal;\n \
+				outNormal = in_normal;\n \
 				outExtra = extra;\n \
 		}";
 
@@ -91,7 +91,7 @@ void upload_to_renderer(PONG_ELEMENT* element) {
 	glBindVertexArray(0);
 }
 
-void remove_to_renderer(PONG_ELEMENT* ELEMENT) {
+void remove_to_renderer(PONG_ELEMENT* element) {
 	glDeleteBuffers(1, &element->vbo);
 	if (element->elements_count > 0) {
 		glDeleteBuffers(1, &element->ebo);

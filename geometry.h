@@ -44,7 +44,8 @@ extern PONG_ELEMENT startText;
 
 void create_elements(float stage_width, float stage_height);
 void dispose_elements();
-void load_identity_matrix(float *out); 
+void load_identity_matrix(float *out);
+void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out); 
 
 #endif
 
