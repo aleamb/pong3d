@@ -6,6 +6,9 @@ SDL_GLContext mainContext;
 SDL_AudioSpec want, have;
 SDL_AudioDeviceID dev;
 
+int video_initialized = 0;
+int gl_initialized = 0;
+int sound_initialized = 0;
 
 int sys_init_video(int width, int height) {
 
@@ -22,12 +25,14 @@ int sys_init_video(int width, int height) {
 		return -1;
 	}
 
+	video_initialized = 1;
 	mainContext = SDL_GL_CreateContext(window);
 
 	if (!mainContext) {
 		fprintf( stderr, "GL context creation failed: %s\n", SDL_GetError( ) );
 		return -1;
 	}
+	gl_initialized = 1;
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
@@ -54,10 +59,11 @@ int sys_init_sound(int sample_freq) {
 		fprintf( stderr, "Failed opening audio device: %s\n", SDL_GetError( ) );
 		return -1;
 	} else if (have.format != want.format) {
+		SDL_CloseAudioDevice(dev);
 		fprintf( stderr, "Failed getting sample format (AUDIO_F32SYS)\n");
 		return -1;
 	}
-	//
+	sound_initialized = 1;
 	SDL_PauseAudioDevice(dev, 0);
 }
 
@@ -66,12 +72,19 @@ void sys_play_sound(void *samples, int data_size) {
 }
 
 void sys_dispose_screen() {
-	SDL_DestroyWindow(window);
+	if (gl_initialized) {
+		SDL_GL_DeleteContext(mainContext);
+	}
+	if (video_initialized) {
+		SDL_DestroyWindow(window);
+	}
 }
 
 void sys_dispose_audio() {
-	SDL_CloseAudioDevice(dev);
-	SDL_CloseAudio();
+	if (sound_initialized) {
+		SDL_CloseAudioDevice(dev);
+		SDL_CloseAudio();
+	}
 }
 
 void sys_quit(int errolevel) {

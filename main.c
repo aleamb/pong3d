@@ -1,4 +1,7 @@
 #include "msys.h"
+#include "geometry.h"
+#include "renderer.h"
+#include "text.h"
 #include <stdbool.h>
 
 #define WINDOW_WIDTH 600
@@ -32,17 +35,37 @@ int (*current_task)(int, int, int);
 //void init_game();
 //int task_start_screen(int, int, int);
 
+void cleanup();
 
 int main(int argc, char** argv) {
 	
-	if (init_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
-		quit(1);
+	if (sys_init_screen(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
+		cleanup();
+		exit(1);
 	}
-	if (init_sound(SAMPLE_RATE) < 0) {
-		dispose_screen();
-		quit(1);
+	if (sys_init_sound(SAMPLE_RATE) < 0) {
+		cleanup();
+		exit(1);
 	}
+	if (init_renderer(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
+		cleanup();
+		exit(1);
+	}
+	if (init_text_renderer() < 0) {
+		cleanup();
+		exit(1);
+	}
+	create_elements(WINDOW_WIDTH, WINDOW_HEIGHT);
+	cleanup();	
 	return 0;
+}
+
+void cleanup() {
+	dispose_elements();
+	dispose_renderer();
+	sys_dispose_screen();
+	sys_dispose_sound();
+	sys_quit();
 }
 /*
 void init_game() {

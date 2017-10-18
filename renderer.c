@@ -15,6 +15,10 @@ GLuint modelMatrixId;
 
 GLchar errormsg[ERRORMSG_MAX_LENGTH ];
 
+int program_created = 0;
+int vertex_shader_created = 0;
+int fragment_shader_created = 0;
+
 const GLchar* vertex_shader_source =
 "#version 400 core\n \
 		in vec4 in_position;\n \
@@ -87,6 +91,14 @@ void upload_to_renderer(PONG_ELEMENT* element) {
 	glBindVertexArray(0);
 }
 
+void remove_to_renderer(PONG_ELEMENT* ELEMENT) {
+	glDeleteBuffers(1, &element->vbo);
+	if (element->elements_count > 0) {
+		glDeleteBuffers(1, &element->ebo);
+	}
+	glDeleteVertexArrays(1, &element->vao);
+}
+
 
 GLuint build_shader(GLenum type, const GLchar* source, GLint* result, GLchar *errormsg) {
 	GLuint id = glCreateShader(type);
@@ -137,7 +149,7 @@ GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...) {
 }
 
 
-int setup_renderer(int width, int height) {
+int init_renderer(int width, int height) {
 
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
@@ -161,17 +173,20 @@ int setup_renderer(int width, int height) {
 		fprintf( stderr, "Compile vertex shader failed: %s\n", errormsg);
 		return -1;
 	}
+	vertex_shader_created = 1;
 
 	fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_source, &result, errormsg);
 	if (result != 0) {
 		fprintf( stderr, "Compile fragment shader failed: %s\n", errormsg);
 		return -1;
 	}
+	fragment_shader_created = 1;
 	program = build_shaders_program(2, &result, errormsg, vertex_shader, fragment_shader);
 	if (result != 0) {
 		fprintf( stderr, "Links shaders program failed: %s\n", errormsg);
 		return -1;
 	}
+	program_created = 1;
 
 	load_identity_matrix(view_matrix);
 
@@ -187,6 +202,18 @@ int setup_renderer(int width, int height) {
 	glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 
 	return 0;
+}
+
+void dispose_renderer() {
+	if (program_created) {
+		glDeleteProgram(program_created);
+	}
+	if (vertex_shader_created) {
+		glDeleteShader(vertex_shader);
+	}
+	if (fragment_shader_created) {
+		glDeleteShader(fragment_shader);
+	}
 }
 
 void render_pong_element(PONG_ELEMENT* element) {
@@ -320,4 +347,9 @@ void render_balls_counter(int balls) {
 void render_ball() {
 	render_pong_element(&ball);
 }
+
+GLuint renderer_get_main_program() {
+	return program;
+}
+
 

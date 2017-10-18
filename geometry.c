@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include "renderer.h"
 
 
 /**
@@ -405,27 +406,44 @@ void create_elements(const float window_width, const float window_height)  {
 	setup_overlay(&overlay, overlay_alpha, stage_width, stage.height);
 
 	setup_stick(&player_stick, stick_width, stick_width * aspect, stick_color);
+
 	setup_stick(&opponent_stick, stick_width, stick_width * aspect, stick_color);
+
 	setup_ball(&ball, ball_segments, ball_radius, ball_color);
+
 	setup_ball_shadow(&ball_shadow, ball_segments, ball_radius, shadows_color);
+
 	setup_ball_marks(&ball_mark, ball_segments, ball_radius / 2.0f, ball_color);
+
 	setup_stick_shadows(&stick_shadow, stick_width, stick_width / 50.0f, shadows_color);
+
+	upload_to_renderer(&stage);
+	upload_to_renderer(&overlay);
+	upload_to_renderer(&player_stick);
+	upload_to_renderer(&opponent_stick);
+	upload_to_renderer(&ball);
+	upload_to_renderer(&ball_shadow);
+	upload_to_renderer(&ball_mark);
+	upload_to_renderer(&stick_shadow);
 }
 
 void free_pong_element(PONG_ELEMENT* element) {
-  free(element->vertex);
-  if (element->elements_count > 0) {
-    free(element->elements);
-  }
+	if (element->vertex) {
+		free(element->vertex);
+	}
+	if (element->elements_count > 0 && element->elements) {
+		free(element->elements);
+	}
+	remove_to_renderer(element);
 }
 
 void dispose_elements() {
-  free_pong_element(&player_stick);
-  free_pong_element(&opponent_stick);
-  free_pong_element(&ball);
-  free_pong_element(&stage);
-  free_pong_element(&ball_shadow);
-  free_pong_element(&stick_shadow);
-  free_pong_element(&ball_mark);
+	free_pong_element(&player_stick);
+	free_pong_element(&opponent_stick);
+	free_pong_element(&ball);
+	free_pong_element(&stage);
+	free_pong_element(&ball_shadow);
+	free_pong_element(&stick_shadow);
+	free_pong_element(&ball_mark);
 }
 

@@ -1,6 +1,7 @@
 #include "text.h"
 #include "geometry.h"
 #include <stdio.h>
+#include "renderer.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -84,7 +85,7 @@ void render_text(const char* text, float x, float y, float scale, int font_size)
 }
 
 
-int setup_text(GLuint program) {
+int init_text_renderer() {
 	if(FT_Init_FreeType(&ft)) {
 		fprintf(stderr, "Could not init freetype library\n");
 		return -1;
@@ -93,7 +94,7 @@ int setup_text(GLuint program) {
 		fprintf(stderr, "Could not open font\n");
 		return -1;
 	}
-
+	GLuint program = renderer_get_main_program();
 	glUniform1i(glGetUniformLocation(program, "tex"), 0);
 	renderTextUniform = glGetUniformLocation(program, "renderTextUniform");
 	modelMatrixUniform = glGetUniformLocation(program, "modelMatrix"); 
