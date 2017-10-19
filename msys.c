@@ -65,6 +65,7 @@ int sys_init_sound(int sample_freq) {
 	}
 	sound_initialized = 1;
 	SDL_PauseAudioDevice(dev, 0);
+	return 0;
 }
 
 void sys_play_sound(void *samples, int data_size) {
@@ -91,3 +92,50 @@ void sys_quit(int errolevel) {
 	SDL_Quit();
 }
 
+unsigned int sys_get_ticks() {
+	return SDL_GetTicks();
+}
+
+int sys_wait(SysEvent* sysEvent, unsigned int milis) {
+	int hasEvent = 0;
+	SDL_Event event;
+	if (SDL_WaitEventTimeout(&event, milis)) {
+
+		switch (event.type) {
+			case SDL_QUIT:
+				sysEvent->type = CLOSE;
+				break;
+			case SDL_MOUSEMOTION:
+				sysEvent->type = MOUSEMOTION;
+				break;
+			case SDL_MOUSEBUTTONUP:
+				if (event.button.button == SDL_BUTTON_LEFT) {
+					sysEvent->type = MOUSELBUTTONUP;
+				}
+				break;
+			case SDL_KEYDOWN:
+				if (event.key.keysym.sym == SDLK_ESCAPE) {
+					sysEvent->type = CLOSE;
+				}
+				break;
+		}
+		hasEvent = 1;
+	}
+	if (hasEvent) {
+		sysEvent->x = event.motion.x;
+		sysEvent->y = event.motion.y;
+	}
+	return hasEvent;
+
+}
+
+void sys_swap_buffers() {
+	SDL_GL_SwapWindow(window);
+}
+
+void sys_mouse_center(int width, int height) {
+	SDL_WarpMouseInWindow(window, width >> 1, height >> 1);
+}
+void sys_show_cursor(int show) {
+//	SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
+}

@@ -16,4 +16,13 @@ void render_sticks();
 void render_ball();
 void render_balls_counter(int);
 
+void render_fadeout_overlay(float overlay_fadeout_alpha);
+void renderer_clear_screen();
+void render_overlay();
+void reset_overlay();
+
+void render_opponent_stick();
+void render_player_stick();
+void render_balls_counter(int);
+
 #endif

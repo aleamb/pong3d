@@ -13,6 +13,8 @@ GLuint projectionMatrixId;
 GLuint viewMatrixId;
 GLuint modelMatrixId;
 
+GLuint alphaUniform;
+
 GLchar errormsg[ERRORMSG_MAX_LENGTH ];
 
 int program_created = 0;
@@ -64,6 +66,11 @@ const GLchar* fragment_shader_source =
 
 float projection_matrix[16];
 float view_matrix[16];
+
+
+void renderer_clear_screen() {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
 
 void upload_to_renderer(PONG_ELEMENT* element) {
 	glGenVertexArrays(1, &element->vao);
@@ -200,6 +207,9 @@ int init_renderer(int width, int height) {
 	modelMatrixId = glGetUniformLocation(program, "modelMatrix");
 	glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
 	glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
+	alphaUniform = glGetUniformLocation(program, "alpha");
+	glUniform1f(alphaUniform, 0.0f);
+
 
 	return 0;
 }
@@ -288,35 +298,6 @@ void render_shadows() {
 
 }
 
-void render_ball_marks(int balls) {
-	ball_mark.model_matrix[0] = 0.0f;
-	ball_mark.model_matrix[1] = 0.0f;
-	ball_mark.model_matrix[2] = 1.0f;
-	ball_mark.model_matrix[3] = 0.0f;
-
-	ball_mark.model_matrix[4] = 0.0f;
-	ball_mark.model_matrix[5] = 1.0f;
-	ball_mark.model_matrix[6] = 0.0f;
-	ball_mark.model_matrix[7] = 0.0f;
-
-	ball_mark.model_matrix[8] = -1.0f;
-	ball_mark.model_matrix[9] = 0.0f;
-	ball_mark.model_matrix[10] = 0.0f;
-	ball_mark.model_matrix[11] = 0.0f;
-	ball_mark.model_matrix[15] = 1.0f;
-	ball_mark.model_matrix[13] = -stage.height / 2.0f + 0.05f;
-
-	float gap = ball_mark.width * 3.0f;
-	ball_mark.model_matrix[12] = -((float)(balls + 1) * gap) / 2.0f;
-
-	for (int i = 1; i < balls; i++) {
-		ball_mark.model_matrix[12] += gap;
-		ball_mark.model_matrix[14] = 0.0f;
-		render_pong_element(&ball_mark);
-	}
-
-}
-
 void render_stage() {
 	glUniform1i(glGetUniformLocation(program, "stageWireframe"), 1);
 	glPolygonMode(GL_FRONT, GL_LINE);
@@ -335,9 +316,9 @@ void render_balls_counter(int balls) {
 	ball_mark.model_matrix[13] = -stage.height / 2.0f + 0.05f;
 
 	float gap = ball_mark.width * 3.0f;
-	ball_mark.model_matrix[12] = -((float)(balls + 1) * gap) / 2.0f;
+	ball_mark.model_matrix[12] = -((float)(balls) * gap) / 2.0f;
 
-	for (int i = 1; i < balls; i++) {
+	for (int i = 0; i < balls - 1; i++) {
 		ball_mark.model_matrix[12] += gap;
 		ball_mark.model_matrix[14] = 0.0f;
 		render_pong_element(&ball_mark);
@@ -352,4 +333,23 @@ GLuint renderer_get_main_program() {
 	return program;
 }
 
+void render_overlay() {
+	render_pong_element(&overlay);
+}
+
+void reset_overlay() {
+	glUniform1f(alphaUniform, 0.0f);
+}
+void render_fadeout_overlay(float pAlpha) {
+	glUniform1f(alphaUniform, pAlpha);
+	render_overlay();
+	glUniform1f(alphaUniform, 0.0f);
+}
+
+void render_opponent_stick() {
+	render_pong_element(&opponent_stick);	
+}
+void render_player_stick(){
+	render_pong_element(&player_stick);
+}
 

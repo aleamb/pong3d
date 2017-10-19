@@ -24,7 +24,7 @@ void render_text(const char* text, float x, float y, float scale, int font_size)
 	text_model_matrix[0] = scale;
 	text_model_matrix[5] = -scale;
 	text_model_matrix[10] = scale;
-	text_model_matrix[12] = x - scale * (strlen(p) >> 1);
+	text_model_matrix[12] = x - scale * (strlen(text) >> 1);
 	text_model_matrix[13] = y;
 	float dx = 0.0f;
 
@@ -79,7 +79,7 @@ void render_text(const char* text, float x, float y, float scale, int font_size)
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 	glBindVertexArray(0);
-	glUniform1i(renderTextUniform, 1);
+	glUniform1i(renderTextUniform, 0);
 
 	glDeleteBuffers(1, &vbo);
 	glDeleteVertexArrays(1, &vao);
@@ -99,7 +99,7 @@ int init_text_renderer() {
 	}
 	GLuint program = renderer_get_main_program();
 	glUniform1i(glGetUniformLocation(program, "tex"), 0);
-	renderTextUniform = glGetUniformLocation(program, "renderTextUniform");
+	renderTextUniform = glGetUniformLocation(program, "renderText");
 	modelMatrixUniform = glGetUniformLocation(program, "modelMatrix"); 
 	// generate start screen text
 	load_identity_matrix(text_model_matrix);

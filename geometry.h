@@ -5,6 +5,8 @@
 
 #define P_2PI 6.283185307f
 
+#define OVERLAY_ALPHA 0.8f
+
 // position*4 + color*4 + normal*4 + texture*2
 #define VERTEX_SIZE 14
 
@@ -46,6 +48,10 @@ void create_elements(float stage_width, float stage_height);
 void dispose_elements();
 void load_identity_matrix(float *out);
 void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out); 
+void reset_player_stick_position();
+void reset_opponent_stick_position();
+void move_player_stick(float, float);
+void reset_ball_position();
 
 #endif
 
