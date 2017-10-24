@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "renderer.h"
+#include <stdio.h>
 
 #define STAGE_BLOCKS 7
 #define STAGE_LARGE 0.5f;
@@ -291,10 +292,10 @@ void setup_ball(PONG_ELEMENT* ball, int segments, float radius, const float* col
 	ball->width = radius;
 
 	ball->vertex_count = segments * segments;
-	ball->elements_count = (ball->vertex_count * 6 + 6);
+	ball->elements_count = (ball->vertex_count * 6);
 
 	ball->vertex = (float*)calloc(VERTEX_SIZE * ball->vertex_count, sizeof(float));
-	ball->elements = (unsigned int*)malloc(sizeof(unsigned int) * ball->elements_count);
+	ball->elements = (unsigned int*)calloc(ball->elements_count, sizeof(unsigned int));
 
 
 	for (p = 0, theta = -M_PI_2; p < segments; p++, theta += unit_angle)
@@ -311,7 +312,7 @@ void setup_ball(PONG_ELEMENT* ball, int segments, float radius, const float* col
 			vertex++;
 		}
 	}
-	for (int i = 0, j = 0; i < (ball->vertex_count >> 1); i++, j += 6) {
+	for (int i = 0, j = 0; i < (ball->vertex_count - segments); i++, j += 6) {
 		emit_mesh_triangle_pair(i, segments, triangle1, triangle2);
 		ball->elements[j] = triangle1[0];
 		ball->elements[j + 1] = triangle1[1];
@@ -357,13 +358,13 @@ void setup_ball_marks(PONG_ELEMENT* element, int segments, float radius, const f
 }
 void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const float* color) {
 
-	int elements[] = {0, 1, 2, 0, 2, 3};
+	int elements[] = {0, 1, 2, 2, 3, 0};
 
 	element->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
 	element->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
 	element->vertex_count = 4;
 	element->elements_count = 6;
-	element->width = width;
+	element->width= width;
 	element->height = height;
 	element->z = 0.0f;
 	element->vertexType = GL_TRIANGLES;
@@ -399,7 +400,7 @@ void create_elements(const float window_width, const float window_height)  {
 	float aspect = (float)window_width / window_height;
 	float stick_width = stage_width / 6.0f;
 	float stick_color[] = { 0.5, 0.5, 0.5, 0.5 }; 
-	float ball_segments = 20;
+	int ball_segments = 20;
 	float ball_radius = stage_width / 50.0f;
 	float ball_color[4] = { 1.0, 1.0, 1.0, 1.0 };
 	float shadows_color[] = { 1.0, 1.0, 1.0, 0.2f };
@@ -423,7 +424,7 @@ void create_elements(const float window_width, const float window_height)  {
 
 	setup_stick(&player_stick, stick_width, stick_width / aspect, stick_color);
 
-	setup_stick_shadows(&stick_shadow, stick_width, stick_width / 50.0f, shadows_color);
+	setup_stick_shadows(&stick_shadow, stick_width, ball_radius, shadows_color);
 
 	reset_player_stick_position();
 	reset_opponent_stick_position();
@@ -435,6 +436,7 @@ void create_elements(const float window_width, const float window_height)  {
 	upload_to_renderer(&ball_shadow);
 	upload_to_renderer(&ball_mark);
 	upload_to_renderer(&stick_shadow);
+
 }
 
 void free_pong_element(PONG_ELEMENT* element) {

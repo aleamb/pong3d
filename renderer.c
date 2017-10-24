@@ -239,8 +239,18 @@ void render_pong_element(PONG_ELEMENT* element) {
 
 void render_shadows() {
 
-	load_identity_matrix(ball_shadow.model_matrix);
-
+	ball_shadow.model_matrix[0] = 0.0f;
+	ball_shadow.model_matrix[1] = 0.0f;
+	ball_shadow.model_matrix[2] = -1.0f;
+	ball_shadow.model_matrix[3] = 0.0f;
+	ball_shadow.model_matrix[4] = 0.0f;
+	ball_shadow.model_matrix[5] = 1.0f;
+	ball_shadow.model_matrix[6] = 0.0f;
+	ball_shadow.model_matrix[7] = 0.0f;
+	ball_shadow.model_matrix[8] = 1.0f;
+	ball_shadow.model_matrix[9] = 0.0f;
+	ball_shadow.model_matrix[10] = 0.0f;
+	ball_shadow.model_matrix[11] = 0.0f;
 	ball_shadow.model_matrix[12] = -stage.width / 2.0f + 0.0001;
 	ball_shadow.model_matrix[13] = ball.model_matrix[13];
 	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.011;
@@ -248,13 +258,23 @@ void render_shadows() {
 
 	ball_shadow.model_matrix[12] = stage.width / 2.0f - 0.0001;
 	ball_shadow.model_matrix[13] = ball.model_matrix[13];
-	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.011;;
+	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.011;
 	render_pong_element(&ball_shadow);
+	
+	ball_shadow.model_matrix[0] = 1.0f;
+	ball_shadow.model_matrix[1] = 0.0f;
+	ball_shadow.model_matrix[2] = 0.0f;
+	ball_shadow.model_matrix[3] = 0.0f;
 
-	ball_shadow.model_matrix[0] = 0.0f;
-	ball_shadow.model_matrix[1] = 1.0f;
-	ball_shadow.model_matrix[4] = -1.0f;
+	ball_shadow.model_matrix[4] = 0.0f;
 	ball_shadow.model_matrix[5] = 0.0f;
+	ball_shadow.model_matrix[6] = 1.0f;
+	ball_shadow.model_matrix[7] = 0.0f;
+	
+	ball_shadow.model_matrix[8] = 1.0f;
+	ball_shadow.model_matrix[9] = -1.0f;
+	ball_shadow.model_matrix[10] = 0.0f;
+	ball_shadow.model_matrix[11] = 0.0f;
 
 	ball_shadow.model_matrix[12] = ball.model_matrix[12];
 	ball_shadow.model_matrix[13] = -stage.height / 2.0f + 0.0001;
@@ -265,27 +285,25 @@ void render_shadows() {
 	ball_shadow.model_matrix[13] = stage.height / 2.0f - 0.0001;
 	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.016;;
 	render_pong_element(&ball_shadow);
-
+	
 	stick_shadow.model_matrix[0] = 1.0f;
-	stick_shadow.model_matrix[1] = 0.0f;
-	stick_shadow.model_matrix[4] = 0.0f;
+	stick_shadow.model_matrix[1] = 0.0;
+	stick_shadow.model_matrix[4] = 0.0;
 	stick_shadow.model_matrix[5] = 1.0f;
 
-	stick_shadow.model_matrix[12] = player_stick.model_matrix[12];
-	stick_shadow.model_matrix[13] = -stage.height / 2.0f;
-	render_pong_element(&stick_shadow);
 
+	stick_shadow.model_matrix[12] = player_stick.model_matrix[12];
+	stick_shadow.model_matrix[13] = -stage.height / 2.0f ;
+	render_pong_element(&stick_shadow);
 
 	stick_shadow.model_matrix[12] = player_stick.model_matrix[12];
 	stick_shadow.model_matrix[13] = stage.height / 2.0f;
 	render_pong_element(&stick_shadow);
 
-
-	stick_shadow.model_matrix[0] = 0.0f;
-	stick_shadow.model_matrix[1] = 1.0f;
-	stick_shadow.model_matrix[4] = -1.0f;
-	stick_shadow.model_matrix[5] = 0.0f;
-	stick_shadow.model_matrix[10] = 0.0f;
+	stick_shadow.model_matrix[0] = 0;
+	stick_shadow.model_matrix[1] = 1.0;
+	stick_shadow.model_matrix[4] = -1.0;
+	stick_shadow.model_matrix[5] = 0;
 
 	stick_shadow.model_matrix[12] = -stage.width / 2.0f;
 	stick_shadow.model_matrix[13] = player_stick.model_matrix[13];
