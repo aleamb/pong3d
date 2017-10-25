@@ -10,6 +10,8 @@ int video_initialized = 0;
 int gl_initialized = 0;
 int sound_initialized = 0;
 
+static void format_event(SDL_Event* event, SysEvent* sysEvent);
+
 int sys_init_video(int width, int height) {
 
 	if( SDL_Init( SDL_INIT_VIDEO ) < 0 ) {
@@ -99,31 +101,12 @@ unsigned int sys_get_ticks() {
 int sys_wait(SysEvent* sysEvent, unsigned int milis) {
 	int hasEvent = 0;
 	SDL_Event event;
-	if (SDL_WaitEventTimeout(&event, milis)) {
-
-		switch (event.type) {
-			case SDL_QUIT:
-				sysEvent->type = CLOSE;
-				break;
-			case SDL_MOUSEMOTION:
-				sysEvent->type = MOUSEMOTION;
-				break;
-			case SDL_MOUSEBUTTONUP:
-				if (event.button.button == SDL_BUTTON_LEFT) {
-					sysEvent->type = MOUSELBUTTONUP;
-				}
-				break;
-			case SDL_KEYDOWN:
-				if (event.key.keysym.sym == SDLK_ESCAPE) {
-					sysEvent->type = CLOSE;
-				}
-				break;
-		}
+	if (SDL_PollEvent(&event)) {
+		format_event(&event, sysEvent);
 		hasEvent = 1;
-	}
-	if (hasEvent) {
-		sysEvent->x = event.motion.x;
-		sysEvent->y = event.motion.y;
+	} else if (SDL_WaitEventTimeout(&event, milis)) {
+		format_event(&event, sysEvent);
+		hasEvent = 1;
 	}
 	return hasEvent;
 
@@ -137,5 +120,31 @@ void sys_mouse_center(int width, int height) {
 	SDL_WarpMouseInWindow(window, width >> 1, height >> 1);
 }
 void sys_show_cursor(int show) {
-//	SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
+	//	SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
 }
+
+static void format_event(SDL_Event* event, SysEvent* sysEvent) {
+	switch (event->type) {
+		case SDL_QUIT:
+			sysEvent->type = CLOSE;
+			break;
+		case SDL_MOUSEMOTION:
+			sysEvent->type = MOUSEMOTION;
+			break;
+		case SDL_MOUSEBUTTONUP:
+			if (event->button.button == SDL_BUTTON_LEFT) {
+				sysEvent->type = MOUSELBUTTONUP;
+			}
+			break;
+		case SDL_KEYDOWN:
+			if (event->key.keysym.sym == SDLK_ESCAPE) {
+				sysEvent->type = CLOSE;
+			}
+			break;
+	}
+	sysEvent->x = event->motion.x;
+	sysEvent->y = event->motion.y;
+
+}
+
+

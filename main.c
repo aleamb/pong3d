@@ -10,10 +10,9 @@
 
 #define WINDOW_WIDTH 600
 #define WINDOW_HEIGHT 378
-#define FPS 60
+#define FPS 40
 #define BALLS 12
 #define SAMPLE_RATE 44100
-#define TASK_SIZE 12
 
 typedef enum {
 	IDLE,
@@ -32,25 +31,6 @@ typedef enum {
 
 GAME_STATE gameState, prevGameState;
 
-typedef enum {
-	IDLE_TASK,
-	RENDER_START_SCREEN_TASK,
-	RENDER_PREPARING_PLAYERS_TASK,
-	RENDER_MAIN_SCREEN_TASK,
-	PLAYER_SERVICE_TASK,
-	PLAYING_TASK,
-	EXIT_TASK
-} TASK_TYPE;
-
-typedef struct  {
-	TASK_TYPE type;
-	bool reset_frames_count;
-	bool render;
-}TASK;
-
-TASK task;
-
-
 int player_score;
 int opponent_score;
 int balls;
@@ -58,13 +38,16 @@ int balls;
 
 void run_game();
 void init_game();
+void render(int, int);
+bool process_state(int, int, int, int);
 
 // tasks
-int render_start_screen_task(int, int);
+int render_start_screen_task(int);
 int loading_players_task(int, int);
 int player_service_task(int, int);
 int process_events_task(SysEvent* event, int, int);
 int player_service_task(int, int	);
+int player_service_task(int, int);
 int playing_task(int, int);
 
 void render_main_screen();
@@ -79,11 +62,6 @@ int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball);
 int relative_move_ball(float x, float y, float z);
 
 void change_state(GAME_STATE state);
-TASK tasks[TASK_SIZE];
-TASK* poll_task();
-void send_task(TASK_TYPE taskType, bool render, bool restart_frames_count);
-int task_gap_index = -1;
-int task_index = 0;
 
 const float INITIAL_BALL_SPEED_VECTOR[] = { -0.002f,  0.002f, 0.07f };
 const float OPP_STICK_RETURN_SPEED_VECTOR[] = { -0.1f,  0.1f, 0.0f };
@@ -98,6 +76,8 @@ float overlay_fadeout_alpha;
 
 
 float ball_speed_vector[3];
+
+bool resetFramesCounter = true;
 
 int main(int argc, char** argv) {
 
@@ -147,63 +127,38 @@ void init_game() {
 
 void run_game() {
 
-	int taskElapsedFrames = 0;
+	int elapsedFrames = 0;
 	unsigned int startTime, elapsedTime;
 	bool run = true;
 	int period = ((1.0f / FPS) * 1000.0f) ;
 	int pendingEvent = 0;
 	SysEvent event;
-
-	change_state(IDLE);
+	bool mustRender = false;
+	GAME_STATE currentState = STARTING;
 	change_state(STARTING);
-	send_task(RENDER_START_SCREEN_TASK, true, true);
 
-
-	while (run) {
+	while (gameState != EXIT) {
 		startTime = sys_get_ticks();
-		TASK* task = poll_task();
-		if (task) {
-			if (task->reset_frames_count) {
-				taskElapsedFrames = 0;
-			}
-			if (task->render) {
-				renderer_clear_screen();
-			}
-			switch(task->type) {
-				case RENDER_START_SCREEN_TASK:
-					render_start_screen_task(taskElapsedFrames, period);
-					break;
-				case RENDER_PREPARING_PLAYERS_TASK:
-					loading_players_task(taskElapsedFrames, period);
-					break;
-				case RENDER_MAIN_SCREEN_TASK:
-					render_main_screen();
-					break;
-				case PLAYER_SERVICE_TASK:
-					player_service_task(taskElapsedFrames, period);
-					break;
-				case PLAYING_TASK:
-					playing_task(taskElapsedFrames, period);
-					break;
-				case EXIT_TASK:
-					run = false;
-					break;
-				default:
-					break;	
-			}
-			if (task->render) {
-				sys_swap_buffers();
-			}
+			if (currentState != gameState) {
+			elapsedFrames = 0;	
+			currentState = gameState;
 		}
+		printf("frames: %d\n", elapsedFrames);
+		process_state(elapsedFrames, sys_get_ticks() - startTime, period, pendingEvent);
 
-
-		if (pendingEvent) {
-			process_events_task(&event, taskElapsedFrames, period);
-		}
 		elapsedTime = sys_get_ticks() - startTime;
-		pendingEvent = sys_wait(&event, period - elapsedTime);
+		int wait_time = period - elapsedTime;
+		printf("voy a esperar %d milis\n", wait_time);
+		
+		while(wait_time > 0 && (pendingEvent = sys_wait(&event, wait_time))) {
+				printf("me ha interrumpido un evento\n");
+				int t1 = sys_get_ticks();
+				process_events_task(&event, elapsedFrames, period);
+				wait_time -= (sys_get_ticks() - t1);
+				printf("ahora voy a esperar %d milis\n", wait_time);
+		}
 
-		taskElapsedFrames++;
+		elapsedFrames++;
 	}
 
 }
@@ -213,30 +168,26 @@ void change_state(GAME_STATE state) {
 	gameState = state;
 }
 
-void send_task(TASK_TYPE taskType, bool render, bool restart_frames_count) {
-	task_gap_index++;
-	if (task_gap_index < TASK_SIZE) {
-		tasks[task_gap_index].type = taskType;
-		tasks[task_gap_index].render = render;
-		tasks[task_gap_index].reset_frames_count = restart_frames_count;
+bool process_state(int elapsedFrames, int time_delta, int period, int pendingEvent) {
+	
+	switch (gameState) {
+		
+		case STARTING:
+			render_start_screen_task(elapsedFrames);
+			break;
+		case LOADING_PLAYERS:
+			loading_players_task(elapsedFrames, period);
+			break;
+		case PLAYER_SERVICE:
+			player_service_task(elapsedFrames, pendingEvent);
+			break;
+		case PLAYER_RETURN:
+			playing_task(elapsedFrames, pendingEvent);
+			break;
+			
 	}
+	return false;
 }
-
-TASK* poll_task() {
-	TASK* task;
-	if (task_gap_index < 0) {
-		return NULL;
-	}
-	task = &tasks[task_index];
-	if (task_index >= task_gap_index) {
-		task_index = 0;
-	} else {
-		task_index++;
-	}
-	return task;
-}
-
-
 
 void render_main_screen() {
 	render_stage();
@@ -252,20 +203,18 @@ int process_events_task(SysEvent* event, int elapsedFrames, int period) {
 
 	switch (event->type) {
 		case CLOSE:
-			send_task(EXIT_TASK, false, false);
+			change_state(EXIT);	
 			break;
 		case MOUSELBUTTONUP:
 			if (gameState == STARTED) {
 				change_state(LOADING_PLAYERS);
-				send_task(RENDER_PREPARING_PLAYERS_TASK, true, true);
 			} else if (gameState == PLAYER_SERVICE && ball_in_player_stick()) {
-				send_task(PLAYER_SERVICE_TASK, false, true);
+				change_state(PLAYER_RETURN);
 			}
 			break;
 		case MOUSEMOTION:
 			if (gameState == PLAYER_SERVICE || gameState == PLAYER_RETURN || gameState == OPP_RETURN) {
 				mouse_move_player_stick(event->x, event->y);
-				send_task(RENDER_MAIN_SCREEN_TASK, true, true);
 			}
 	} 
 	return 0;
@@ -308,12 +257,14 @@ void render_scores() {
 	render_text(text, stage.width /2.0f - 0.15, -stage.height / 2.0f + 0.05, 0.02, 48);
 }
 
-int render_start_screen_task(int elapsedFrames, int period) {
+int render_start_screen_task(int elapsedFrames) {
+	renderer_clear_screen();
 	render_stage();
 	reset_overlay();
 	render_overlay();
 	render_text("Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
 	change_state(STARTED);
+	sys_swap_buffers();
 	return 0;
 }
 
@@ -325,29 +276,35 @@ int loading_players_task(int elapsedFrames, int period) {
 		overlay_fadeout_alpha = overlay_fadeout;
 	}
 	if (elapsedFrames <= overlay_fadeout_frames) {
+		renderer_clear_screen();
 		render_stage();
 		render_fadeout_overlay(overlay_fadeout_alpha);
 		overlay_fadeout_alpha += overlay_fadeout;
-		send_task(RENDER_PREPARING_PLAYERS_TASK, true, false);
-
+		sys_swap_buffers();
 	} else {
 		init_game();
 		play_start_sound();
 		change_state(PLAYER_SERVICE);
-		render_main_screen();
-		send_task(RENDER_MAIN_SCREEN_TASK, true, true);
 	}
 	return 0;
 }
 
-int player_service_task(int elapsedFrames, int period) {
-	memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
-	change_state(PLAYER_RETURN);
-	send_task(PLAYING_TASK, true, true);
+int player_service_task(int elapsedFrames, int pendingEvent) {
+	if (elapsedFrames == 0) {
+		memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
+		renderer_clear_screen();
+		render_main_screen();
+		sys_swap_buffers();
+	}
+	//if (pendingEvent) {
+		renderer_clear_screen();
+		render_main_screen();
+		sys_swap_buffers();
+	//}
 	return 0;
 }
 
-int playing_task(int elapsedFrames, int period) {
+int playing_task(int elapsedFrames, int pendingEvent) {
 
 	float hit_wall_vector[3];
 
@@ -362,11 +319,13 @@ int playing_task(int elapsedFrames, int period) {
 			play_wall_hit_sound();
 		}
 		relative_move_ball(ball_speed_vector[0], ball_speed_vector[1], ball_speed_vector[2]);
-		send_task(PLAYING_TASK, true, true);
+		renderer_clear_screen();
 		render_main_screen();
-	} else {
-		send_task(PLAYING_TASK, false, false);
+		sys_swap_buffers();
+	} else if (pendingEvent) {
+		renderer_clear_screen();
 		render_main_screen();
+		sys_swap_buffers();
 	}
 
 	return 0;
