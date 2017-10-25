@@ -133,8 +133,8 @@ void run_game() {
 	int period = ((1.0f / FPS) * 1000.0f) ;
 	int pendingEvent = 0;
 	SysEvent event;
-	bool mustRender = false;
-	int reset_frames_counter = 1;
+	bool mustRender = true;
+	int reset_frames_counter = 0;
 	int wait_time = 0;
 	int time_last_frame = startTime = sys_get_ticks();
 	GAME_STATE currentState = STARTING;
@@ -148,12 +148,13 @@ void run_game() {
 			elapsedFrames = 0;	
 			currentState = gameState;
 		}
-		if ((startTime - time_last_frame) >= period) {
+		if (mustRender || (startTime - time_last_frame) >= period) {
 			reset_frames_counter = process_state(elapsedFrames, startTime - time_last_frame, period, pendingEvent);
 			time_last_frame = sys_get_ticks();
 			elapsedFrames++;
 			elapsedTime = time_last_frame - startTime;
 			wait_time = period - elapsedTime;	
+			mustRender = false;
 		} else {
 			wait_time = period - ((sys_get_ticks() - startTime) + startTime - time_last_frame);
 		}
@@ -171,7 +172,7 @@ void change_state(GAME_STATE state) {
 }
 
 int process_state(int elapsedFrames, int time_delta, int period, int pendingEvent) {
-	int reset_frames;
+	int reset_frames = 1;
 	switch (gameState) {
 
 		case STARTING:
@@ -235,6 +236,7 @@ int process_events_task(SysEvent* event, int elapsedFrames, int period) {
 		case MOUSEMOTION:
 			if (gameState == PLAYER_SERVICE || gameState == PLAYER_RETURN || gameState == OPP_RETURN) {
 				mouse_move_player_stick(event->x, event->y);
+				render(0);
 			}
 	} 
 	return 0;
@@ -285,7 +287,7 @@ int render_start_screen_task(int elapsedFrames) {
 	render_text("Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
 	change_state(STARTED);
 	sys_swap_buffers();
-	return 0;
+	return 1;
 }
 
 int loading_players_task(int elapsedFrames, int time_delta, int period) {
@@ -315,14 +317,14 @@ int player_service_task(int elapsedFrames, int pendingEvent) {
 	if (pendingEvent) {
 		render(0);
 	}
-	return 0;
+	return 1;
 }
 
 int playing_task(int elapsedFrames, int pendingEvent) {
 
 	float hit_wall_vector[3];
-
-	if (elapsedFrames == 0 || elapsedFrames > 12) {
+	
+	if (elapsedFrames > 40) {
 		if ((ball.z + ball.width) >= player_stick.z && ball_in_player_stick()) {
 			play_player_pong_sound();
 			ball_speed_vector[2] *= -1.0f;
