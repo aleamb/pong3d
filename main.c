@@ -38,12 +38,12 @@ int balls;
 
 void run_game();
 void init_game();
-void render(int, int);
-bool process_state(int, int, int, int);
+void render(int);
+int process_state(int, int, int, int);
 
 // tasks
 int render_start_screen_task(int);
-int loading_players_task(int, int);
+int loading_players_task(int, int, int);
 int player_service_task(int, int);
 int process_events_task(SysEvent* event, int, int);
 int player_service_task(int, int	);
@@ -134,26 +134,33 @@ void run_game() {
 	int pendingEvent = 0;
 	SysEvent event;
 	bool mustRender = false;
+	int reset_frames_counter = 1;
+	int wait_time = 0;
+	int time_last_frame = startTime = sys_get_ticks();
 	GAME_STATE currentState = STARTING;
 	change_state(STARTING);
 
 	while (gameState != EXIT) {
-		startTime = sys_get_ticks();
-		if (currentState != gameState) {
+		if (pendingEvent) {
+			process_events_task(&event, elapsedFrames, period);	
+		}
+		if (currentState != gameState || reset_frames_counter) {
 			elapsedFrames = 0;	
 			currentState = gameState;
 		}
-		printf("frames: %d\n", elapsedFrames);
-		process_state(elapsedFrames, sys_get_ticks() - startTime, period, pendingEvent);
-
-		elapsedTime = sys_get_ticks() - startTime;
-		int wait_time = period - elapsedTime;
-		pendingEvent = sys_wait(&event, wait_time);
-		if (!pendingEvent) {
+		if ((startTime - time_last_frame) >= period) {
+			reset_frames_counter = process_state(elapsedFrames, startTime - time_last_frame, period, pendingEvent);
+			time_last_frame = sys_get_ticks();
 			elapsedFrames++;
+			elapsedTime = time_last_frame - startTime;
+			wait_time = period - elapsedTime;	
 		} else {
-			process_events_task(&event, elapsedFrames, period);
+			wait_time = period - ((sys_get_ticks() - startTime) + startTime - time_last_frame);
 		}
+		pendingEvent = sys_wait(&event, wait_time);
+		startTime = sys_get_ticks();
+
+
 	}
 
 }
@@ -163,25 +170,43 @@ void change_state(GAME_STATE state) {
 	gameState = state;
 }
 
-bool process_state(int elapsedFrames, int time_delta, int period, int pendingEvent) {
-	
+int process_state(int elapsedFrames, int time_delta, int period, int pendingEvent) {
+	int reset_frames;
 	switch (gameState) {
-		
+
 		case STARTING:
-			render_start_screen_task(elapsedFrames);
+			reset_frames = render_start_screen_task(elapsedFrames);
 			break;
 		case LOADING_PLAYERS:
-			loading_players_task(elapsedFrames, period);
+			reset_frames = loading_players_task(elapsedFrames, time_delta, period);
 			break;
 		case PLAYER_SERVICE:
-			player_service_task(elapsedFrames, pendingEvent);
+			reset_frames = player_service_task(elapsedFrames, pendingEvent);
 			break;
 		case PLAYER_RETURN:
-			playing_task(elapsedFrames, pendingEvent);
+			reset_frames = playing_task(elapsedFrames, pendingEvent);
 			break;
-			
+
 	}
-	return false;
+	return reset_frames;
+}
+
+void render(int time_delta) {
+	renderer_clear_screen();
+	switch (gameState) {
+		case LOADING_PLAYERS:
+			render_stage();
+			render_fadeout_overlay(overlay_fadeout_alpha);
+			break;
+		case PLAYER_SERVICE:
+			render_main_screen();
+			break;
+		case PLAYER_RETURN:
+			render_main_screen();
+			break;
+
+	}
+	sys_swap_buffers();
 }
 
 void render_main_screen() {
@@ -263,7 +288,7 @@ int render_start_screen_task(int elapsedFrames) {
 	return 0;
 }
 
-int loading_players_task(int elapsedFrames, int period) {
+int loading_players_task(int elapsedFrames, int time_delta, int period) {
 	if (elapsedFrames == 0) {
 		// overlay fading out velocity
 		overlay_fadeout_frames = FPS * 0.3f;
@@ -271,11 +296,9 @@ int loading_players_task(int elapsedFrames, int period) {
 		overlay_fadeout_alpha = overlay_fadeout;
 	}
 	if (elapsedFrames <= overlay_fadeout_frames) {
-		renderer_clear_screen();
-		render_stage();
-		render_fadeout_overlay(overlay_fadeout_alpha);
+		render(time_delta);
 		overlay_fadeout_alpha += overlay_fadeout;
-		sys_swap_buffers();
+
 	} else {
 		init_game();
 		play_start_sound();
@@ -287,14 +310,10 @@ int loading_players_task(int elapsedFrames, int period) {
 int player_service_task(int elapsedFrames, int pendingEvent) {
 	if (elapsedFrames == 0) {
 		memcpy(ball_speed_vector, INITIAL_BALL_SPEED_VECTOR, sizeof(INITIAL_BALL_SPEED_VECTOR));
-		renderer_clear_screen();
-		render_main_screen();
-		sys_swap_buffers();
+		render(0);
 	}
 	if (pendingEvent) {
-		renderer_clear_screen();
-		render_main_screen();
-		sys_swap_buffers();
+		render(0);
 	}
 	return 0;
 }
@@ -303,7 +322,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 
 	float hit_wall_vector[3];
 
-	if (elapsedFrames > 6) {
+	if (elapsedFrames == 0 || elapsedFrames > 12) {
 		if ((ball.z + ball.width) >= player_stick.z && ball_in_player_stick()) {
 			play_player_pong_sound();
 			ball_speed_vector[2] *= -1.0f;
@@ -317,10 +336,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 		renderer_clear_screen();
 		render_main_screen();
 		sys_swap_buffers();
-	} else if (pendingEvent) {
-		renderer_clear_screen();
-		render_main_screen();
-		sys_swap_buffers();
+		return 1;
 	}
 
 	return 0;
