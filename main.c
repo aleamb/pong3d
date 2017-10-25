@@ -139,7 +139,7 @@ void run_game() {
 
 	while (gameState != EXIT) {
 		startTime = sys_get_ticks();
-			if (currentState != gameState) {
+		if (currentState != gameState) {
 			elapsedFrames = 0;	
 			currentState = gameState;
 		}
@@ -148,17 +148,12 @@ void run_game() {
 
 		elapsedTime = sys_get_ticks() - startTime;
 		int wait_time = period - elapsedTime;
-		printf("voy a esperar %d milis\n", wait_time);
-		
-		while(wait_time > 0 && (pendingEvent = sys_wait(&event, wait_time))) {
-				printf("me ha interrumpido un evento\n");
-				int t1 = sys_get_ticks();
-				process_events_task(&event, elapsedFrames, period);
-				wait_time -= (sys_get_ticks() - t1);
-				printf("ahora voy a esperar %d milis\n", wait_time);
+		pendingEvent = sys_wait(&event, wait_time);
+		if (!pendingEvent) {
+			elapsedFrames++;
+		} else {
+			process_events_task(&event, elapsedFrames, period);
 		}
-
-		elapsedFrames++;
 	}
 
 }
@@ -296,11 +291,11 @@ int player_service_task(int elapsedFrames, int pendingEvent) {
 		render_main_screen();
 		sys_swap_buffers();
 	}
-	//if (pendingEvent) {
+	if (pendingEvent) {
 		renderer_clear_screen();
 		render_main_screen();
 		sys_swap_buffers();
-	//}
+	}
 	return 0;
 }
 
