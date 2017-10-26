@@ -51,7 +51,9 @@ void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, 
 void reset_player_stick_position();
 void reset_opponent_stick_position();
 void move_player_stick(float, float);
+void move_opponent_stick(float, float);
 void reset_ball_position();
+void move_ball(float x, float y, float z);
 
 #endif
 

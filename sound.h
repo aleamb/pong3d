@@ -9,5 +9,4 @@ void play_player_wins_sound();
 void play_opponent_wins_sound();
 void dispose_sound();
 void play_wall_hit_sound();
-
 #endif

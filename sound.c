@@ -48,8 +48,8 @@ int init_sound(int sample_freq) {
 	synthParams.oscillator2_freq = 350.0f;
 	opponent_pong_sound_samples = synthetize(&synthParams, &opponent_pong_sound, sample_freq);
 
-	synthParams.oscillator1_freq = 700.0f;
-	synthParams.oscillator2_freq = 700.0f;
+	synthParams.oscillator1_freq = 500.0f;
+	synthParams.oscillator2_freq = 500.0f;
 	start_sound_samples = synthetize(&synthParams, &start_sound, sample_freq);
 
 

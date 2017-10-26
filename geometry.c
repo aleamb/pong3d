@@ -5,8 +5,7 @@
 #include "renderer.h"
 #include <stdio.h>
 
-#define STAGE_BLOCKS 7
-#define STAGE_LARGE 0.5f;
+#define STAGE_BLOCKS 8
 
 /**
   Game objects
@@ -215,7 +214,7 @@ void setup_stage(PONG_ELEMENT* stage,
 	float x_width, y_height;
 	stage->width = width;
 	stage->height = width / aspect;
-	stage->large = large;
+	stage->large = large * blocks;
 
 	stage->vertexType = GL_QUADS;
 
@@ -232,7 +231,7 @@ void setup_stage(PONG_ELEMENT* stage,
 	float *tmp_vertex = (float*)malloc(sizeof(float) * 3 * tmp_vertex_count);
 
 	for (int i = 0; i <= blocks; i++) {
-		float z_depth  = (-stage->large * (float)i);
+		float z_depth  = (-large * (float)i);
 
 		tmp_vertex[vertex++] = -x_width;
 		tmp_vertex[vertex++] = y_height;
@@ -335,16 +334,16 @@ void build_circle(PONG_ELEMENT* element, float radius, int segments, const float
 	float unit_angle = P_2PI / (float)segments;
 	float theta;
 	element->width = radius;
-	
+
 	assign_position_to_vertex(element->vertex, 0, 0.0f, 0.0f, 0.0f);
 	assign_color_to_vertex(element->vertex, 0, color[0], color[1], color[2], color[3]);
-	
+
 	for (p = 0, theta = 0; p < element->vertex_count - 1; p++, theta -= unit_angle) {
 		assign_position_to_vertex(element->vertex, vertex, cos(theta) * element->width, sin(theta) * element->width, 0);
 		assign_color_to_vertex(element->vertex, vertex, color[0], color[1], color[2], color[3]);
 		vertex++;
 	}
-	
+
 	load_identity_matrix(element->model_matrix);
 	element->model_matrix[12] = -0.2f;
 }
@@ -354,7 +353,9 @@ void setup_ball_shadow(PONG_ELEMENT* element, int segments, float radius, const 
 }
 
 void setup_ball_marks(PONG_ELEMENT* element, int segments, float radius, const float* color) {
+	load_identity_matrix(element->model_matrix);
 	build_circle(element, radius,  segments, color);
+	element->model_matrix[14] = 0.02f;
 }
 void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const float* color) {
 
@@ -391,17 +392,19 @@ void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const
 void create_elements(const float window_width, const float window_height)  {
 	/**
 	  Config for geometry of all objects in game
-	 */
+	: */
 	float stage_width = 1.0f;
+	float stage_large = 1.5f;
 	float stage_blocks = STAGE_BLOCKS;
-	float blocks_large = stage_width / 5.0f;
+	float blocks_large = stage_large / stage_blocks;
+	
 	float stage_color[] = { 0.0, 1.0, 0.0, 0.2 };
 	float overlay_alpha = OVERLAY_ALPHA;
 	float aspect = (float)window_width / window_height;
 	float stick_width = stage_width / 6.0f;
 	float stick_color[] = { 0.5, 0.5, 0.5, 0.5 }; 
 	int ball_segments = 20;
-	float ball_radius = stage_width / 50.0f;
+	float ball_radius = stage_large / 80.0f;
 	float ball_color[4] = { 1.0, 1.0, 1.0, 1.0 };
 	float shadows_color[] = { 1.0, 1.0, 1.0, 0.2f };
 	opponent_z_coord = -stage_blocks * blocks_large;
@@ -481,10 +484,15 @@ void reset_opponent_stick_position() {
 void move_player_stick(float x, float y) {
 	player_stick.x = x;
 	player_stick.y = y;
-	player_stick.model_matrix[12] = player_stick.x;
-	player_stick.model_matrix[13] = player_stick.y;
+	player_stick.model_matrix[12] = x;
+	player_stick.model_matrix[13] = y;
 }
-
+void move_opponent_stick(float x, float y) {
+	opponent_stick.x = x;
+	opponent_stick.y = y;
+	opponent_stick.model_matrix[12] = x;
+	opponent_stick.model_matrix[13] = y;
+}
 void reset_ball_position() {
 	ball.x = 0.0f;
 	ball.y = 0.0f;
@@ -495,4 +503,15 @@ void reset_ball_position() {
 
 
 }
+void move_ball(float x, float y, float z) {
+	ball.x = x;
+	ball.y = y;
+	ball.z = z;
+	ball.model_matrix[12] = x;
+	ball.model_matrix[13] = y;
+	ball.model_matrix[14] = z;
+
+
+}
+
 

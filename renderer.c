@@ -336,9 +336,8 @@ void render_balls_counter(int balls) {
 	float gap = ball_mark.width * 3.0f;
 	ball_mark.model_matrix[12] = -((float)(balls) * gap) / 2.0f;
 
-	for (int i = 0; i < balls - 1; i++) {
+	for (int i = 0; i < balls; i++) {
 		ball_mark.model_matrix[12] += gap;
-		ball_mark.model_matrix[14] = 0.0f;
 		render_pong_element(&ball_mark);
 	}
 }

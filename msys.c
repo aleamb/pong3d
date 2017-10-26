@@ -120,7 +120,7 @@ void sys_mouse_center(int width, int height) {
 	SDL_WarpMouseInWindow(window, width >> 1, height >> 1);
 }
 void sys_show_cursor(int show) {
-	//	SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
+	SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
 }
 
 static void format_event(SDL_Event* event, SysEvent* sysEvent) {
