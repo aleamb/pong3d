@@ -149,31 +149,32 @@ void run_game() {
 	int reset_frames_counter = 0;
 	int wait_time = 0;
 	int time_last_frame = startTime = sys_get_ticks();
-	int fps_counter = 0;
 	GAME_STATE currentState = STARTING;
 	change_state(STARTING);
 
 	while (gameState != EXIT) {
+		startTime = sys_get_ticks();
 		if (pendingEvent) {
-			process_events_task(&event, elapsedFrames, period);	
-		}
-		if (currentState != gameState || reset_frames_counter) {
-			elapsedFrames = 0;	
-			currentState = gameState;
+			process_events_task(&event, elapsedFrames, period);
+				
 		}
 		if (firstLoop || (startTime - time_last_frame) >= period) {
+			if (currentState != gameState || reset_frames_counter) {
+				elapsedFrames = 0;	
+				currentState = gameState;
+			}
 			reset_frames_counter = process_state(elapsedFrames, startTime - time_last_frame, period, pendingEvent, &event);
-			time_last_frame = sys_get_ticks();
 			elapsedFrames++;
+
+			time_last_frame = sys_get_ticks();
+
 			elapsedTime = time_last_frame - startTime;
 			wait_time = period - elapsedTime;	
 			firstLoop = false;
-			fps_counter++;
 		} else {
-			wait_time = period - ((sys_get_ticks() - startTime) + startTime - time_last_frame);
+			wait_time -= (sys_get_ticks() - startTime); 
 		}
 		pendingEvent = sys_wait(&event, wait_time);
-		startTime = sys_get_ticks();
 
 
 	}
@@ -598,7 +599,7 @@ int opponent_service_task(int elapsedFrames) {
 
 int finished_task(int elapsedFrames) {
 	if (elapsedFrames == 0) {
-		sys_show_cursosr(1);
+		sys_show_cursor(1);
 		render(0);
 	}
 	return 0;
