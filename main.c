@@ -3,6 +3,7 @@
 #include "geometry.h"
 #include "renderer.h"
 #include "text.h"
+#include "screens.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -46,7 +47,6 @@ void init_game();
 void render(int);
 int process_state(int, int, int, int, SysEvent* event);
 
-// tasks
 int start_screen_task(int);
 int loading_players_task(int, int, int);
 int process_events_task(SysEvent* event, int, int);
@@ -56,13 +56,6 @@ int playing_task(int, int);
 int opponent_wins_task(int);
 int player_wins_task(int);
 int finished_task(int);
-
-void render_main_screen();
-void render_scores();
-void render_player_wins_screen();
-void render_opp_wins_screen(); 
-void render_start_screen();
-void render_finish_screen();
 
 void mouse_move_player_stick(int mx, int my);
 int ball_in_player_stick();
@@ -232,11 +225,9 @@ void render(int time_delta) {
 			render_fadeout_overlay(overlay_fadeout_alpha);
 			break;
 		case PLAYER_SERVICE:
-			render_main_screen();
-			break;
 		case PLAYER_RETURN:
 		case OPP_RETURN:
-			render_main_screen();
+			render_main_screen(balls, player_score, opponent_score);
 			break;
 		case PLAYER_WINS:
 			render_player_wins_screen();
@@ -246,7 +237,7 @@ void render(int time_delta) {
 			render_opp_wins_screen();
 				break;
 		case FINISHED:
-			render_finish_screen();
+			render_finish_screen(player_score, opponent_score);
 			break;
 		case OPP_SERVICE:
 		case STARTED:
@@ -255,47 +246,6 @@ void render(int time_delta) {
 		
 	}
 	sys_swap_buffers();
-}
-
-void render_player_wins_screen() {
-	render_stage();
-	render_ball();
-	render_opponent_stick();
-	render_pong_element(&overlay);
-	render_text("Player wins", 0, 0, 0.02, 48);
-
-}
-
-void render_opp_wins_screen() {
-	render_stage();
-	render_ball();
-	render_opponent_stick();
-	render_pong_element(&overlay);
-	render_text("Computer wins", 0, 0, 0.02, 48);
-
-}
-
-void render_main_screen() {
-	render_stage();
-	render_opponent_stick();
-	render_ball();
-	render_player_stick();
-	render_scores();
-	render_shadows();
-	render_balls_counter(balls);
-
-}
-void render_start_screen() {
-	render_stage();
-	reset_overlay();
-	render_overlay();
-	render_text("Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
-
-}
-
-void render_finish_screen() {
-	render_start_screen();
-	render_scores();
 }
 
 
@@ -349,14 +299,6 @@ void mouse_move_player_stick(int mx, int my) {
 			(mx - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH,
 			//(aspect * h -> w/h * h -> h)
 			(my - (WINDOW_HEIGHT >> 1)) / -(float)WINDOW_WIDTH);
-}
-
-void render_scores() {
-	char text[16];
-	sprintf(text, "YOU> %d", player_score);
-	render_text(text, -stage.width  / 2.0f + 0.1, -stage.height / 2.0f + 0.05, 0.02, 48);
-	sprintf(text, "Computer> %d", opponent_score);
-	render_text(text, stage.width /2.0f - 0.15, -stage.height / 2.0f + 0.05, 0.02, 48);
 }
 
 int start_screen_task(int elapsedFrames) {
