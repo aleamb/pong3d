@@ -1,6 +1,10 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+#include "geometry.h"
+#include <stdbool.h>
+
+
 #define WINDOW_TITLE "Pong 3D"
 
 #define WINDOW_WIDTH 600
@@ -35,5 +39,34 @@
 #define FRAMES_DEC_FACTOR 1
 
 #define INITIAL_BALL_VELOCITY_DECREMENT 10
+
+typedef enum {
+
+	STARTING,
+	STARTED,
+	LOADING_PLAYERS,
+	PLAYER_SERVICE,
+	PLAYER_RETURN,
+	OPP_RETURN,
+	OPP_SERVICE,
+	PLAYER_WINS,
+	OPP_WINS,
+	FINISHED,
+	EXIT
+}GAME_STATE;
+
+extern int balls;
+extern int player_score;
+extern int opponent_score;
+extern GAME_STATE gameState, prevGameState;
+
+void mouse_move_player_stick(int mx, int my);
+int ball_in_player_stick();
+int ball_in_opponent_stick();
+int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* stick);
+int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball);
+
+void change_state(GAME_STATE state);
+
 
 #endif

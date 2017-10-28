@@ -20,7 +20,7 @@ void run_game();
 void init_game();
 int process_state(int, int, int, int, SysEvent* event);
 void cleanup();
-
+int process_events_task(SysEvent* event, int, int);
 
 int main(int argc, char** argv) {
 

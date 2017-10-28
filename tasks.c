@@ -18,14 +18,17 @@ int player_score;
 int opponent_score;
 int balls;
 
-
-
 float ball_speed_vector[3];
 
 bool resetFramesCounter = true;
 
 int ball_frames_dec_factor = FRAMES_DEC_FACTOR;
 int ball_decrement = INITIAL_BALL_VELOCITY_DECREMENT;
+
+
+bool equals(float a, float b) {
+	return (bool)(fabs(a - b) <= ball.width);
+}
 
 int start_screen_task(int elapsedFrames) {
 	sys_show_cursor(1);
