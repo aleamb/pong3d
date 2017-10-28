@@ -29,6 +29,7 @@ int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* st
 int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball);
 
 void change_state(GAME_STATE state);
+GAME_STATE get_state();
 
 bool equals(float, float);
 

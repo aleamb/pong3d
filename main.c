@@ -18,7 +18,6 @@
 
 void run_game();
 void init_game();
-void render(int);
 int process_state(int, int, int, int, SysEvent* event);
 void cleanup();
 

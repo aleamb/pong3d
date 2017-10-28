@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "pong3d.h"
+#include <math.h>
 
 void change_state(GAME_STATE state) {
 	prevGameState = gameState;
