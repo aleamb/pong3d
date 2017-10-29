@@ -47,7 +47,7 @@ int loading_players_task(int elapsedFrames, int time_delta, int period) {
 	if (elapsedFrames <= overlay_fadeout_frames) {
 		renderer_clear_screen();
 		render_stage();
-		render_fadeout_overlay(overlay_fadeout_alpha);	
+		render_fadeout_overlay(overlay_fadeout_alpha);
 		sys_swap_buffers();
 		overlay_fadeout_alpha += overlay_fadeout;
 
@@ -119,10 +119,10 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 				ball_speed_vector[2] *= -1.0f;
 				change_state(PLAYER_RETURN);
 				ball.z = player_stick.z - ball.width;
-				ball.model_matrix[14] = ball.z;	
+				ball.model_matrix[14] = ball.z;
 				to_position[0] = to_position[1] = 0;
 				ball_decrement++;
-				int sub_frames = (FPS - ball_frames_dec_factor * ball_decrement);
+				int sub_frames = ((FPS - ball_frames_dec_factor * ball_decrement));
 				if (sub_frames > 0)
 					ball_speed_vector[2] = -stage.large / sub_frames;
 				player_stick.xprev = player_stick.x;
@@ -135,7 +135,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 			}
 		}
 		if (!equals(opponent_stick.x, 0.0) || !equals(opponent_stick.y, 0.0))
-			move_opponent_stick(opponent_stick.x + to_position[0], opponent_stick.y + to_position[1]);	
+			move_opponent_stick(opponent_stick.x + to_position[0], opponent_stick.y + to_position[1]);
 
 		resetFrames = 0;
 	} else if (gameState == PLAYER_RETURN) {
@@ -151,7 +151,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 
 			} else {
 				change_state(PLAYER_WINS);
-			}	
+			}
 		} else {
 
 			if (elapsedFrames == 4) {
@@ -169,7 +169,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 
 			}
 			if (!equals(opponent_stick.x, ball.x) || !equals(opponent_stick.y, 0.0))
-				move_opponent_stick(opponent_stick.x + to_position[0], opponent_stick.y + to_position[1]);	
+				move_opponent_stick(opponent_stick.x + to_position[0], opponent_stick.y + to_position[1]);
 
 		}
 		if (lookDesviation) {
@@ -277,4 +277,3 @@ int finished_task(int elapsedFrames) {
 	}
 	return 0;
 }
-
