@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include "msys.h"
 #include "pong3d.h"
-#include "utils.h"
 #include "tasks.h"
 
 void render_player_wins_screen() {

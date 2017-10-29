@@ -3,7 +3,6 @@
 #include "pong3d.h"
 #include <stdbool.h>
 #include "screens.h"
-#include "utils.h"
 #include "renderer.h"
 #include "sound.h"
 #include <time.h>
@@ -14,9 +13,9 @@
 float overlay_fadeout;
 int  overlay_fadeout_frames;
 float overlay_fadeout_alpha;
-int player_score;
-int opponent_score;
-int balls;
+int player_score = 0;
+int opponent_score = 0;
+int balls = BALLS;
 
 float ball_speed_vector[3];
 
@@ -46,13 +45,17 @@ int loading_players_task(int elapsedFrames, int time_delta, int period) {
 		overlay_fadeout_alpha = overlay_fadeout;
 	}
 	if (elapsedFrames <= overlay_fadeout_frames) {
+		renderer_clear_screen();
 		render_stage();
 		render_fadeout_overlay(overlay_fadeout_alpha);	
-
+		sys_swap_buffers();
 		overlay_fadeout_alpha += overlay_fadeout;
 
 	} else {
 		play_start_sound();
+		player_score = 0;
+		opponent_score = 0;
+		balls = BALLS;
 		change_state(PLAYER_SERVICE);
 	}
 	return 0;
@@ -87,7 +90,7 @@ int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event) {
 int playing_task(int elapsedFrames, int pendingEvent) {
 
 	float hit_wall_vector[3];
-	static float to_position[2] = {0, 0 };
+	static float to_position[2] = { 0, 0 };
 	static int framesToPosition = 0;
 	int resetFrames = 0;
 	static bool lookDesviation = false;

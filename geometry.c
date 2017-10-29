@@ -5,7 +5,10 @@
 #include "renderer.h"
 #include <stdio.h>
 
-#define STAGE_BLOCKS 8
+
+#define OVERLAY_ALPHA 0.8f
+#define STICK_TEXTURE_WIDTH 80
+#define STICK_TEXTURE_HEIGHT 50
 
 /**
   Game objects
@@ -158,6 +161,55 @@ void setup_stick(PONG_ELEMENT* stick, float stick_width, float stick_height, con
 	stick->elements[3] = 2;
 	stick->elements[4] = 3;
 	stick->elements[5] = 0;
+
+	// setup texture
+/*
+	stick->texture_data = (float*)calloc(STICK_TEXTURE_WIDTH * STICK_TEXTURE_HEIGHT * 4, sizeof(float));
+
+	int border_radius = 6;
+	int horizontal_line_length = STICK_TEXTURE_WIDTH - border_radius; 
+	int horizontal_line_offset = border_radius;
+	int vertical_line_length = STICK_TEXTURE_HEIGHT - border_radius;
+	int vertical_line_offset = border_radius;
+	float lines_color[4] = { 0.0f, 0.0f, 1.0f, 0.8f };
+	int circle_points = 10;
+	float unit_angle = M_PI_2 / circle_points;
+	float ang;
+	
+	for (int i = border_radius; i < horizontal_line_length; i++) {
+		int offset = i * sizeof(lines_color);
+		stick->texture_data[offset] = lines_color[0];
+		stick->texture_data[offset + 1] = lines_color[1];
+		stick->texture_data[offset + 2] = lines_color[2];
+		stick->texture_data[offset + 3] = lines_color[3];
+		offset = STICK_TEXTURE_WIDTH * STICK_TEXTURE_HEIGHT + i * sizeof(float);
+		stick->texture_data[offset] = lines_color[0];
+		stick->texture_data[offset + 1] = lines_color[1];
+		stick->texture_data[offset + 2] = lines_color[2];
+		stick->texture_data[offset + 3] = lines_color[3];
+	}
+
+	for (int i = border_radius; i < vertical_line_length; i++) {
+		int offset = i * sizeof(lines_color) * STICK_TEXTURE_WIDTH;
+		stick->texture_data[offset] = lines_color[0];
+		stick->texture_data[offset + 1] = lines_color[1];
+		stick->texture_data[offset + 2] = lines_color[2];
+		stick->texture_data[offset + 3] = lines_color[3];
+
+		offset += (STICK_TEXTURE_WIDTH * sizeof(lines_color));
+		stick->texture_data[offset] = lines_color[0];
+		stick->texture_data[offset + 1] = lines_color[1];
+		stick->texture_data[offset + 2] = lines_color[2];
+		stick->texture_data[offset + 3] = lines_color[3];
+	}
+
+	for (int i = 0, ang = 0.0f; i < circle_points; i++, ang += unit_angle) {
+		int x = cos(ang) * (float)border_radius + (float)horizontal_line_length;
+		int y = sin(ang) * (float)border_radius + (float)vertical_line_length;
+
+		
+	}
+*/
 
 	load_identity_matrix(stick->model_matrix);
 
@@ -389,15 +441,14 @@ void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const
 }
 
 
-void create_elements(const float window_width, const float window_height)  {
+void create_elements(const float window_width, const float window_height, int stage_blocks)  {
 	/**
 	  Config for geometry of all objects in game
-	: */
+	  : */
 	float stage_width = 1.0f;
 	float stage_large = 1.5f;
-	float stage_blocks = STAGE_BLOCKS;
 	float blocks_large = stage_large / stage_blocks;
-	
+
 	float stage_color[] = { 0.0, 1.0, 0.0, 0.2 };
 	float overlay_alpha = OVERLAY_ALPHA;
 	float aspect = (float)window_width / window_height;

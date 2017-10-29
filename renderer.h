@@ -12,7 +12,6 @@ void remove_to_renderer(PONG_ELEMENT*);
 void dispose_renderer();
 
 void render_stage();
-void render_sticks();
 void render_ball();
 void render_balls_counter(int);
 

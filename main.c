@@ -6,7 +6,6 @@
 #include "screens.h"
 #include "tasks.h"
 #include "pong3d.h"
-#include "utils.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -40,7 +39,7 @@ int main(int argc, char** argv) {
 		cleanup();
 		exit(1);
 	}
-	create_elements(WINDOW_WIDTH, WINDOW_HEIGHT);
+	create_elements(WINDOW_WIDTH, WINDOW_HEIGHT, STAGE_BLOCKS);
 
 	run_game();
 	cleanup();	

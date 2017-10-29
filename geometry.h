@@ -5,18 +5,18 @@
 
 #define P_2PI 6.283185307f
 
-#define OVERLAY_ALPHA 0.8f
-
 // position*4 + color*4 + normal*4 + texture*2
 #define VERTEX_SIZE 14
 
 typedef struct {
   float* vertex;
+  float* texture_data;
   int vertex_count;
   GLuint vbo;
   GLuint texture;
   unsigned int* elements;
   int elements_count;
+  int texture_size;
   GLuint mode;
   GLuint vertexType;
   float x;
@@ -44,7 +44,7 @@ extern PONG_ELEMENT overlay;
 extern PONG_ELEMENT startText;
 
 
-void create_elements(float stage_width, float stage_height);
+void create_elements(float stage_width, float stage_height, int num_blocks);
 void dispose_elements();
 void load_identity_matrix(float *out);
 void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out); 

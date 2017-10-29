@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define ERRORMSG_MAX_LENGTH 64
+#define ERRORMSG_MAX_LENGTH 128
 
 GLuint vertex_shader;
 GLuint fragment_shader;
@@ -14,6 +14,7 @@ GLuint viewMatrixId;
 GLuint modelMatrixId;
 
 GLuint alphaUniform;
+GLuint renderStickUniform;
 
 GLchar errormsg[ERRORMSG_MAX_LENGTH ];
 
@@ -52,8 +53,22 @@ const GLchar* fragment_shader_source =
 		uniform sampler2D tex;\n \
 		uniform bool renderText;\n \
 		uniform float alpha;\n \
+		uniform bool renderStick;\n \
+		float udRoundBox( vec2 p, vec2 b, float r ) {\n \
+			return length(max(abs(p)-b,0.0))-r;\n \
+		}\n \
 		void main(void) {\n \
-			if (stageWireframe) {\n \
+			if (renderStick) {\n \
+				if (udRoundBox(vec2(outUV.x - 0.5, outUV.y - 0.5), vec2(0.4, 0.4), 0.07) > 0.0) {\n \
+					color = vec4(0.0, 0.0, 0.0, 0.0);\n \
+				}\n \
+				else if (udRoundBox(vec2(outUV.x - 0.5, outUV.y - 0.5), vec2(0.34, 0.35), 0.1) > 0.0) {\n \
+					color = vec4(0.0, 0.0, 1.0, 0.6);\n \
+				} else  {\n \
+					color = vec4(0.5, 0.5, 0.5, 0.6);\n \
+				}\n \
+			}\n \
+			else if (stageWireframe) {\n \
 				color = outColor + vec4(0.0, 0.0, 0.0, 0.2);\n \
 			}\n \
 			else if (renderText) {\n \
@@ -63,7 +78,6 @@ const GLchar* fragment_shader_source =
 				color = vec4(outColor.xyz, outColor.w - alpha);\n \
 			}\n \
 		}";
-
 float projection_matrix[16];
 float view_matrix[16];
 
@@ -208,6 +222,7 @@ int init_renderer(int width, int height) {
 	glUniformMatrix4fv(projectionMatrixId, 1, GL_FALSE, projection_matrix);
 	glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 	alphaUniform = glGetUniformLocation(program, "alpha");
+	renderStickUniform = glGetUniformLocation(program, "renderStick");
 	glUniform1f(alphaUniform, 0.0f);
 
 
@@ -260,7 +275,7 @@ void render_shadows() {
 	ball_shadow.model_matrix[13] = ball.model_matrix[13];
 	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.011;
 	render_pong_element(&ball_shadow);
-	
+
 	ball_shadow.model_matrix[0] = 1.0f;
 	ball_shadow.model_matrix[1] = 0.0f;
 	ball_shadow.model_matrix[2] = 0.0f;
@@ -270,7 +285,7 @@ void render_shadows() {
 	ball_shadow.model_matrix[5] = 0.0f;
 	ball_shadow.model_matrix[6] = 1.0f;
 	ball_shadow.model_matrix[7] = 0.0f;
-	
+
 	ball_shadow.model_matrix[8] = 1.0f;
 	ball_shadow.model_matrix[9] = -1.0f;
 	ball_shadow.model_matrix[10] = 0.0f;
@@ -285,7 +300,7 @@ void render_shadows() {
 	ball_shadow.model_matrix[13] = stage.height / 2.0f - 0.0001;
 	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.016;;
 	render_pong_element(&ball_shadow);
-	
+
 	stick_shadow.model_matrix[0] = 1.0f;
 	stick_shadow.model_matrix[1] = 0.0;
 	stick_shadow.model_matrix[4] = 0.0;
@@ -325,11 +340,6 @@ void render_stage() {
 	render_pong_element(&stage);
 }
 
-void render_sticks() {
-	render_pong_element(&opponent_stick);
-	render_pong_element(&player_stick);
-}
-
 void render_balls_counter(int balls) {
 	ball_mark.model_matrix[13] = -stage.height / 2.0f + 0.05f;
 
@@ -364,9 +374,13 @@ void render_fadeout_overlay(float pAlpha) {
 }
 
 void render_opponent_stick() {
-	render_pong_element(&opponent_stick);	
+	glUniform1i(renderStickUniform, 1);
+	render_pong_element(&opponent_stick);
+	glUniform1i(renderStickUniform, 0);
 }
 void render_player_stick(){
+	glUniform1i(renderStickUniform, 1);
 	render_pong_element(&player_stick);
+	glUniform1i(renderStickUniform, 0);
 }
 
