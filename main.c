@@ -1,3 +1,10 @@
+/**
+	@file main.c
+	@author Alejandro Ambroa (jandroz@gmail.com)
+	@date 1 Oct 2017
+	@brief Pong game in three dimensions. Inspired in pong game by Liquid Media (http://www.liquid.se/pong/). 
+*/
+
 #include "msys.h"
 #include "sound.h"
 #include "geometry.h"
@@ -81,6 +88,8 @@ void run_game() {
 	GAME_STATE currentState = STARTING;
 	change_state(STARTING);
 
+	// Game loop.
+
 	while (gameState != EXIT) {
 		startTime = sys_get_ticks();
 		if (pendingEvent) {
@@ -103,6 +112,10 @@ void run_game() {
 		} else {
 			wait_time -= (sys_get_ticks() - startTime); 
 		}
+		/**
+			When ocurrs a event (like a mouse motion) waiting is interrupted, event processed
+			and then current state is rendered. Next, the loop waits again with the updated time (prior time minus event processing time)
+		*/
 		pendingEvent = sys_wait(&event, wait_time);
 
 

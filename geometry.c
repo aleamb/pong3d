@@ -1,3 +1,9 @@
+/**
+	@file geometry.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Game objects for pong3d and utils functions for geometry tranformations. 
+*/
 #include "geometry.h"
 #include <math.h>
 #include <stdlib.h>
@@ -7,12 +13,6 @@
 
 
 #define OVERLAY_ALPHA 0.8f
-#define STICK_TEXTURE_WIDTH 80
-#define STICK_TEXTURE_HEIGHT 50
-
-/**
-  Game objects
- */
 
 PONG_ELEMENT player_stick;
 PONG_ELEMENT opponent_stick;
@@ -25,16 +25,6 @@ PONG_ELEMENT overlay;
 PONG_ELEMENT startText;
 
 float opponent_z_coord;
-
-void normalize_vertex(float* mesh, int index, int count) {
-	for (int i = 0; i < count; i++) {
-		int offset = (i + index) * VERTEX_SIZE;
-		float length = sqrt(mesh[offset] * mesh[offset] + mesh[offset + 1] * mesh[offset + 1] + mesh[offset + 2] * mesh[offset + 2]);
-		mesh[offset] /= length;
-		mesh[offset + 1] /= length;
-		mesh[offset + 2] /= length;
-	}
-}
 
 
 void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out) {
@@ -109,9 +99,10 @@ void assign_uv_to_vertex(float* vertex_buffer, int index, float u, float v) {
 	vertex_buffer[offset] = u;
 	vertex_buffer[offset + 1] = v;
 }
+
 /*
-   Algorithm to emit triangles vertices for a common mesh
- */
+   Algorithm to build vertex indices of common mesh.
+*/
 
 void emit_mesh_triangle_pair(int index, int num_base_vertices, int* triangle1, int* triangle2) {
 	int init_line = ((index + 1) % num_base_vertices) == 0;
@@ -131,27 +122,27 @@ void setup_stick(PONG_ELEMENT* stick, float stick_width, float stick_height, con
 	stick->width = stick_width;
 	stick->height = stick_height;
 
-	float width2 = stick->width / 2.0f;
-	float height2 = stick->height / 2.0f;
+	stick->width2 = stick->width / 2.0f;
+	stick->height2 = stick->height / 2.0f;
 
 	stick->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
 	stick->vertex_count = 4;
 	stick->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
 	stick->elements_count = 6;
 
-	assign_position_to_vertex(stick->vertex, 0, -width2, -height2, 0.0f);
+	assign_position_to_vertex(stick->vertex, 0, -stick->width2, -stick->height2, 0.0f);
 	assign_color_to_vertex(stick->vertex, 0, color[0], color[1], color[2], color[3]);
 	assign_uv_to_vertex(stick->vertex, 0, 0, 0);
 
-	assign_position_to_vertex(stick->vertex, 1, -width2, height2, 0.0f);
+	assign_position_to_vertex(stick->vertex, 1, -stick->width2, stick->height2, 0.0f);
 	assign_color_to_vertex(stick->vertex, 1, color[0], color[1], color[2], color[3]);
 	assign_uv_to_vertex(stick->vertex, 1, 0, 1);
 
-	assign_position_to_vertex(stick->vertex, 2, width2, height2, 0.0f);
+	assign_position_to_vertex(stick->vertex, 2, stick->width2, stick->height2, 0.0f);
 	assign_color_to_vertex(stick->vertex, 2, color[0], color[1], color[2], color[3]);
 	assign_uv_to_vertex(stick->vertex, 2, 1, 1);
 
-	assign_position_to_vertex(stick->vertex, 3, width2, -height2, 0.0f);
+	assign_position_to_vertex(stick->vertex, 3, stick->width2, -stick->height2, 0.0f);
 	assign_color_to_vertex(stick->vertex, 3, color[0], color[1], color[2], color[3]);
 	assign_uv_to_vertex(stick->vertex, 3, 1, 0);
 
@@ -161,55 +152,6 @@ void setup_stick(PONG_ELEMENT* stick, float stick_width, float stick_height, con
 	stick->elements[3] = 2;
 	stick->elements[4] = 3;
 	stick->elements[5] = 0;
-
-	// setup texture
-/*
-	stick->texture_data = (float*)calloc(STICK_TEXTURE_WIDTH * STICK_TEXTURE_HEIGHT * 4, sizeof(float));
-
-	int border_radius = 6;
-	int horizontal_line_length = STICK_TEXTURE_WIDTH - border_radius; 
-	int horizontal_line_offset = border_radius;
-	int vertical_line_length = STICK_TEXTURE_HEIGHT - border_radius;
-	int vertical_line_offset = border_radius;
-	float lines_color[4] = { 0.0f, 0.0f, 1.0f, 0.8f };
-	int circle_points = 10;
-	float unit_angle = M_PI_2 / circle_points;
-	float ang;
-	
-	for (int i = border_radius; i < horizontal_line_length; i++) {
-		int offset = i * sizeof(lines_color);
-		stick->texture_data[offset] = lines_color[0];
-		stick->texture_data[offset + 1] = lines_color[1];
-		stick->texture_data[offset + 2] = lines_color[2];
-		stick->texture_data[offset + 3] = lines_color[3];
-		offset = STICK_TEXTURE_WIDTH * STICK_TEXTURE_HEIGHT + i * sizeof(float);
-		stick->texture_data[offset] = lines_color[0];
-		stick->texture_data[offset + 1] = lines_color[1];
-		stick->texture_data[offset + 2] = lines_color[2];
-		stick->texture_data[offset + 3] = lines_color[3];
-	}
-
-	for (int i = border_radius; i < vertical_line_length; i++) {
-		int offset = i * sizeof(lines_color) * STICK_TEXTURE_WIDTH;
-		stick->texture_data[offset] = lines_color[0];
-		stick->texture_data[offset + 1] = lines_color[1];
-		stick->texture_data[offset + 2] = lines_color[2];
-		stick->texture_data[offset + 3] = lines_color[3];
-
-		offset += (STICK_TEXTURE_WIDTH * sizeof(lines_color));
-		stick->texture_data[offset] = lines_color[0];
-		stick->texture_data[offset + 1] = lines_color[1];
-		stick->texture_data[offset + 2] = lines_color[2];
-		stick->texture_data[offset + 3] = lines_color[3];
-	}
-
-	for (int i = 0, ang = 0.0f; i < circle_points; i++, ang += unit_angle) {
-		int x = cos(ang) * (float)border_radius + (float)horizontal_line_length;
-		int y = sin(ang) * (float)border_radius + (float)vertical_line_length;
-
-		
-	}
-*/
 
 	load_identity_matrix(stick->model_matrix);
 
@@ -221,8 +163,8 @@ void setup_overlay(PONG_ELEMENT* overlay, float alpha, float stage_width, float 
 
 	overlay->vertexType = GL_TRIANGLES;
 
-	float width2 = overlay->width / 2.0f;
-	float height2 = overlay->height / 2.0f;
+	overlay->width2 = overlay->width / 2.0f;
+	overlay->height2 = overlay->height / 2.0f;
 
 	overlay->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
 	overlay->vertex_count = 4;
@@ -230,16 +172,16 @@ void setup_overlay(PONG_ELEMENT* overlay, float alpha, float stage_width, float 
 
 	overlay->elements_count = 6;
 
-	assign_position_to_vertex(overlay->vertex, 0, -width2, -height2, 0.0f);
+	assign_position_to_vertex(overlay->vertex, 0, -overlay->width2, -overlay->height2, 0.0f);
 	assign_color_to_vertex(overlay->vertex, 0, 0.0f, 0.0f, 0.0f, alpha);
 
-	assign_position_to_vertex(overlay->vertex, 1, -width2, height2, 0.0f);
+	assign_position_to_vertex(overlay->vertex, 1, -overlay->width2, overlay->height2, 0.0f);
 	assign_color_to_vertex(overlay->vertex, 1, 0.0f, 0.0f, 0.0f, alpha);
 
-	assign_position_to_vertex(overlay->vertex, 2, width2, height2, 0.0f);
+	assign_position_to_vertex(overlay->vertex, 2, overlay->width2, overlay->height2, 0.0f);
 	assign_color_to_vertex(overlay->vertex, 2, 0.0f, 0.0f, 0.0f, alpha);
 
-	assign_position_to_vertex(overlay->vertex, 3, width2, -height2, 0.0f);
+	assign_position_to_vertex(overlay->vertex, 3, overlay->width2, -overlay->height2, 0.0f);
 	assign_color_to_vertex(overlay->vertex, 3, 0.0f, 0.0f, 0.0f, alpha);
 
 	overlay->elements[0] = 0;
@@ -267,11 +209,13 @@ void setup_stage(PONG_ELEMENT* stage,
 	stage->width = width;
 	stage->height = width / aspect;
 	stage->large = large * blocks;
+	stage->width2 = stage->width / 2.0f;
+	stage->height2 = stage->height / 2.0f;
 
 	stage->vertexType = GL_QUADS;
 
-	x_width = stage->width / 2.0f;
-	y_height = stage->height / 2.0f;
+	x_width = stage->width2;
+	y_height = stage->height2;
 
 	stage->vertex_count =  blocks * 16;
 	stage->elements_count = 0;
@@ -423,6 +367,8 @@ void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const
 	element->vertexType = GL_TRIANGLES;
 	float width2 = element->width / 2.0f;
 	float height2 = element->height / 2.0f;
+	element->width2 = width2;
+	element->height2 = height2;
 
 	assign_position_to_vertex(element->vertex, 0, -width2, -height2, element->z);
 	assign_color_to_vertex(element->vertex, 0, color[0], color[1], color[2], color[3]);
@@ -459,8 +405,6 @@ void create_elements(const float window_width, const float window_height, int st
 	float ball_color[4] = { 1.0, 1.0, 1.0, 1.0 };
 	float shadows_color[] = { 1.0, 1.0, 1.0, 0.2f };
 	opponent_z_coord = -stage_blocks * blocks_large;
-
-	// default geometry values
 
 	setup_stage(&stage, window_width, window_height, stage_blocks, stage_width, blocks_large, stage_color);
 

@@ -1,3 +1,10 @@
+/**
+	@file geometry.h
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Game objects for pong3d and utils functions for geometry tranformations. 
+*/
+
 #ifndef _MESH_H_
 #define _MESH_H_
 
@@ -5,18 +12,21 @@
 
 #define P_2PI 6.283185307f
 
-// position*4 + color*4 + normal*4 + texture*2
+/**
+	@brief Vertex structure is position * 4 + color * 4 + normal * 4 + texture * 2. Float types.
+*/
 #define VERTEX_SIZE 14
 
+/**
+	@brief Game object structure.
+*/
 typedef struct {
   float* vertex;
-  float* texture_data;
   int vertex_count;
   GLuint vbo;
   GLuint texture;
   unsigned int* elements;
   int elements_count;
-  int texture_size;
   GLuint mode;
   GLuint vertexType;
   float x;
@@ -30,6 +40,11 @@ typedef struct {
   float width;
   float height;
   float large;
+  /** is useful to keep half of sizes for avoid divisions in rendering code. */
+  float width2;
+  float height2;
+  float large2;
+  /** model matrix to apply tranformations */
   float model_matrix[16];
 }PONG_ELEMENT;
 
@@ -50,8 +65,8 @@ void load_identity_matrix(float *out);
 void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out); 
 void reset_player_stick_position();
 void reset_opponent_stick_position();
-void move_player_stick(float, float);
-void move_opponent_stick(float, float);
+void move_player_stick(float x, float y);
+void move_opponent_stick(float x, float y);
 void reset_ball_position();
 void move_ball(float x, float y, float z);
 

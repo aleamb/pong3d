@@ -1,3 +1,10 @@
+/** 
+	@file renderer.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Rendering functions. Mainly wraps OpenGL calls. 
+*/
+
 #include "renderer.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -15,6 +22,11 @@ GLuint modelMatrixId;
 
 GLuint alphaUniform;
 GLuint renderStickUniform;
+GLuint stageWireframeUniform;
+GLuint applyOffsetUniform;
+GLuint offsetProjectionMatrixUniform; 
+
+float offset_projection_matrix[16];
 
 GLchar errormsg[ERRORMSG_MAX_LENGTH ];
 
@@ -32,17 +44,28 @@ const GLchar* vertex_shader_source =
 		uniform mat4 projectionMatrix;\n \
 		uniform mat4 viewMatrix;\n \
 		uniform mat4 modelMatrix;\n \
+		uniform mat4 offsetProjectionMatrix;\n \
+		uniform bool applyOffset;\n \
 		out vec4 outColor;\n \
 		out vec2 outUV;\n \
 		out vec4 outNormal;\n \
 		out vec4 outExtra;\n \
 		void main(void) {\n \
-			gl_Position = projectionMatrix * viewMatrix * modelMatrix * in_position;\n \
-				outColor = in_color;\n \
-				outUV = in_uv;\n \
-				outNormal = in_normal;\n \
-				outExtra = extra;\n \
+			if (applyOffset) {\n \
+				gl_Position = offsetProjectionMatrix * viewMatrix * modelMatrix * in_position;\n \
+			} else {\n \
+				gl_Position = projectionMatrix * viewMatrix * modelMatrix * in_position;\n \
+			}\n \
+			outColor = in_color;\n \
+			outUV = in_uv;\n \
+			outNormal = in_normal;\n \
+			outExtra = extra;\n \
 		}";
+
+/**
+	This shader rounds stick borders using SDF round box function from
+	Inigo Quilez webpage (http://iquilezles.org/www/articles/distfunctions/distfunctions.htm) 
+*/
 
 const GLchar* fragment_shader_source =
 "#version 400 core\n \
@@ -213,7 +236,7 @@ int init_renderer(int width, int height) {
 
 	// compensation of Z axis due perspective: 0.5 / tan(fov / 2) / aspect
 	view_matrix[14] = -0.866f / ((float)width / height);
-	create_projection_matrix(60.0f, (float)width / height, 0.001f, 10.0f, projection_matrix);
+	create_projection_matrix(60.0f, (float)width / height, 0.1f, 10.0f, projection_matrix);
 
 	glUseProgram(program);
 	projectionMatrixId = glGetUniformLocation(program, "projectionMatrix");
@@ -223,8 +246,19 @@ int init_renderer(int width, int height) {
 	glUniformMatrix4fv(viewMatrixId, 1, GL_FALSE, view_matrix);
 	alphaUniform = glGetUniformLocation(program, "alpha");
 	renderStickUniform = glGetUniformLocation(program, "renderStick");
+	stageWireframeUniform = glGetUniformLocation(program, "stageWireframe");
 	glUniform1f(alphaUniform, 0.0f);
-
+	
+	/** 
+		create offset projection matrix for ball shadow and fix z-fighting
+	*/
+	 
+	create_projection_matrix(60.0f, (float)width / height, 0.1f, 12.0f, offset_projection_matrix);
+	
+	applyOffsetUniform = glGetUniformLocation(program, "applyOffset");
+	offsetProjectionMatrixUniform = glGetUniformLocation(program, "offsetProjectionMatrix");
+	glUniformMatrix4fv(offsetProjectionMatrixUniform, 1, GL_FALSE, offset_projection_matrix);	
+	glUniform1i(applyOffsetUniform, 0);
 
 	return 0;
 }
@@ -253,6 +287,7 @@ void render_pong_element(PONG_ELEMENT* element) {
 }
 
 void render_shadows() {
+	glUniform1i(applyOffsetUniform, 1);
 
 	ball_shadow.model_matrix[0] = 0.0f;
 	ball_shadow.model_matrix[1] = 0.0f;
@@ -266,14 +301,14 @@ void render_shadows() {
 	ball_shadow.model_matrix[9] = 0.0f;
 	ball_shadow.model_matrix[10] = 0.0f;
 	ball_shadow.model_matrix[11] = 0.0f;
-	ball_shadow.model_matrix[12] = -stage.width / 2.0f + 0.0001;
+	ball_shadow.model_matrix[12] = -stage.width2;
 	ball_shadow.model_matrix[13] = ball.model_matrix[13];
-	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.011;
+	ball_shadow.model_matrix[14] = ball.model_matrix[14];
 	render_pong_element(&ball_shadow);
 
-	ball_shadow.model_matrix[12] = stage.width / 2.0f - 0.0001;
+	ball_shadow.model_matrix[12] = stage.width2;
 	ball_shadow.model_matrix[13] = ball.model_matrix[13];
-	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.011;
+	ball_shadow.model_matrix[14] = ball.model_matrix[14];
 	render_pong_element(&ball_shadow);
 
 	ball_shadow.model_matrix[0] = 1.0f;
@@ -292,27 +327,28 @@ void render_shadows() {
 	ball_shadow.model_matrix[11] = 0.0f;
 
 	ball_shadow.model_matrix[12] = ball.model_matrix[12];
-	ball_shadow.model_matrix[13] = -stage.height / 2.0f + 0.0001;
-	ball_shadow.model_matrix[14] = ball.model_matrix[14]- 0.016;
+	ball_shadow.model_matrix[13] = -stage.height2;
+	ball_shadow.model_matrix[14] = ball.model_matrix[14];
 	render_pong_element(&ball_shadow);
 
 	ball_shadow.model_matrix[12] = ball.model_matrix[12];
-	ball_shadow.model_matrix[13] = stage.height / 2.0f - 0.0001;
-	ball_shadow.model_matrix[14] = ball.model_matrix[14] - 0.016;;
+	ball_shadow.model_matrix[13] = stage.height2;
+	ball_shadow.model_matrix[14] = ball.model_matrix[14];
 	render_pong_element(&ball_shadow);
 
 	stick_shadow.model_matrix[0] = 1.0f;
 	stick_shadow.model_matrix[1] = 0.0;
 	stick_shadow.model_matrix[4] = 0.0;
 	stick_shadow.model_matrix[5] = 1.0f;
+	glUniform1i(applyOffsetUniform, 0);
 
 
 	stick_shadow.model_matrix[12] = player_stick.model_matrix[12];
-	stick_shadow.model_matrix[13] = -stage.height / 2.0f ;
+	stick_shadow.model_matrix[13] = -stage.height2 ;
 	render_pong_element(&stick_shadow);
 
 	stick_shadow.model_matrix[12] = player_stick.model_matrix[12];
-	stick_shadow.model_matrix[13] = stage.height / 2.0f;
+	stick_shadow.model_matrix[13] = stage.height2;
 	render_pong_element(&stick_shadow);
 
 	stick_shadow.model_matrix[0] = 0;
@@ -320,28 +356,28 @@ void render_shadows() {
 	stick_shadow.model_matrix[4] = -1.0;
 	stick_shadow.model_matrix[5] = 0;
 
-	stick_shadow.model_matrix[12] = -stage.width / 2.0f;
+	stick_shadow.model_matrix[12] = -stage.width2;
 	stick_shadow.model_matrix[13] = player_stick.model_matrix[13];
 	render_pong_element(&stick_shadow);
 
 
-	stick_shadow.model_matrix[12] = stage.width / 2.0f;
+	stick_shadow.model_matrix[12] = stage.width2;
 	stick_shadow.model_matrix[13] = player_stick.model_matrix[13];
 	render_pong_element(&stick_shadow);
 
 }
 
 void render_stage() {
-	glUniform1i(glGetUniformLocation(program, "stageWireframe"), 1);
+	glUniform1i(stageWireframeUniform, 1);
 	glPolygonMode(GL_FRONT, GL_LINE);
 	render_pong_element(&stage);
-	glUniform1i(glGetUniformLocation(program, "stageWireframe"), 0);
+	glUniform1i(stageWireframeUniform, 0);
 	glPolygonMode(GL_FRONT, GL_FILL);
 	render_pong_element(&stage);
 }
 
 void render_balls_counter(int balls) {
-	ball_mark.model_matrix[13] = -stage.height / 2.0f + 0.05f;
+	ball_mark.model_matrix[13] = -stage.height2 + 0.05f;
 
 	float gap = ball_mark.width * 3.0f;
 	ball_mark.model_matrix[12] = -((float)(balls) * gap) / 2.0f;

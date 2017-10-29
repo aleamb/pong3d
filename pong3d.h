@@ -1,3 +1,5 @@
+
+
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
@@ -35,9 +37,15 @@
 #define FPS 40
 
 #define BALLS 12
+/**
+	each time that player return a ball, ball velocity is increased reducing number of frames where ball movement is updated.
+*/
 
 #define FRAMES_DEC_FACTOR 1
 
+/**
+	initial frame rate where ball movement is updated
+*/
 #define INITIAL_BALL_VELOCITY_DECREMENT 15
 
 typedef enum {
