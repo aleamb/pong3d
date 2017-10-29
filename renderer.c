@@ -1,13 +1,14 @@
 /** 
-	@file renderer.c
-	@author Alejandro Ambroa
-	@date 1 Oct 2017
-	@brief Rendering functions. Mainly wraps OpenGL calls. 
-*/
+  @file renderer.c
+  @author Alejandro Ambroa
+  @date 1 Oct 2017
+  @brief Rendering functions. Mainly wraps OpenGL calls. 
+ */
 
 #include "renderer.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <GL/glew.h>
 
 #define ERRORMSG_MAX_LENGTH 128
 
@@ -57,15 +58,15 @@ const GLchar* vertex_shader_source =
 				gl_Position = projectionMatrix * viewMatrix * modelMatrix * in_position;\n \
 			}\n \
 			outColor = in_color;\n \
-			outUV = in_uv;\n \
-			outNormal = in_normal;\n \
-			outExtra = extra;\n \
+				outUV = in_uv;\n \
+				outNormal = in_normal;\n \
+				outExtra = extra;\n \
 		}";
 
 /**
-	This shader rounds stick borders using SDF round box function from
-	Inigo Quilez webpage (http://iquilezles.org/www/articles/distfunctions/distfunctions.htm) 
-*/
+  This shader rounds stick borders using SDF round box function from
+  Inigo Quilez webpage (http://iquilezles.org/www/articles/distfunctions/distfunctions.htm) 
+ */
 
 const GLchar* fragment_shader_source =
 "#version 400 core\n \
@@ -248,13 +249,13 @@ int init_renderer(int width, int height) {
 	renderStickUniform = glGetUniformLocation(program, "renderStick");
 	stageWireframeUniform = glGetUniformLocation(program, "stageWireframe");
 	glUniform1f(alphaUniform, 0.0f);
-	
+
 	/** 
-		create offset projection matrix for ball shadow and fix z-fighting
-	*/
-	 
+	  create offset projection matrix for ball shadow and fix z-fighting
+	 */
+
 	create_projection_matrix(60.0f, (float)width / height, 0.1f, 12.0f, offset_projection_matrix);
-	
+
 	applyOffsetUniform = glGetUniformLocation(program, "applyOffset");
 	offsetProjectionMatrixUniform = glGetUniformLocation(program, "offsetProjectionMatrix");
 	glUniformMatrix4fv(offsetProjectionMatrixUniform, 1, GL_FALSE, offset_projection_matrix);	

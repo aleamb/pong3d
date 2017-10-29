@@ -1,3 +1,10 @@
+/**
+  @file pong3d.h
+  @author Alejandro Ambroa
+  @date 1 Oct 2017
+  @brief General definitions and data for game.
+ */
+
 
 
 #ifndef _CONFIG_H_
@@ -15,13 +22,13 @@
 #define STAGE_BLOCKS 8
 
 /*
- segments for ball. The number of vertices would be BALL_SEGMENTS^2
- and angle for each segment 2*PI / BALL_SEGMENTS
+   segments for ball. The number of vertices would be BALL_SEGMENTS^2
+   and angle for each segment 2*PI / BALL_SEGMENTS
  */
 #define BALL_SEGMENTS 20
 /*
-  delay in frames to limit speed of computer stick
-*/
+   delay in frames to limit speed of computer stick
+ */
 #define OPPONENT_SAMPLE_ADJUST 30
 
 // sample frecuency rate for sound synthetizer
@@ -38,14 +45,14 @@
 
 #define BALLS 12
 /**
-	each time that player return a ball, ball velocity is increased reducing number of frames where ball movement is updated.
-*/
+  each time that player return a ball, ball velocity is increased reducing number of frames where ball movement is updated.
+ */
 
 #define FRAMES_DEC_FACTOR 1
 
 /**
-	initial frame rate where ball movement is updated
-*/
+  initial frame rate where ball movement is updated
+ */
 #define INITIAL_BALL_VELOCITY_DECREMENT 15
 
 typedef enum {

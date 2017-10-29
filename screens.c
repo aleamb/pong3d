@@ -1,9 +1,9 @@
 /**
-	@file screens.c
-	@author Alejandro Ambroa
-	@date 1 Oct 2017
-	@brief Code for rendering screens. 
-*/
+  @file screens.c
+  @author Alejandro Ambroa
+  @date 1 Oct 2017
+  @brief Code for rendering screens. 
+ */
 
 #include "screens.h"
 #include "geometry.h"
@@ -25,7 +25,7 @@ void init_screens() {
 	player_text_score_coords[1] = -stage.height / 2.0f + 0.05f;
 	computer_text_score_coords[0] = stage.width / 2.0f - 0.15;
 	computer_text_score_coords[1] = -stage.height / 2.0f + 0.05f;
-	
+
 }
 
 void render_player_wins_screen() {

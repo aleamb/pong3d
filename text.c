@@ -1,11 +1,11 @@
 /**
 
-	@file text.c
-	@author Alejandro Ambroa
-	@date 1 Oct 2017
-	@brief Rendering text using freetype lib. 
+  @file text.c
+  @author Alejandro Ambroa
+  @date 1 Oct 2017
+  @brief Rendering text using freetype lib. 
 
-*/
+ */
 
 #include "text.h"
 #include "geometry.h"
@@ -82,7 +82,7 @@ void render_text(const char* text, float x, float y, float scale, int font_size)
 				GL_RED,
 				GL_UNSIGNED_BYTE,
 				g->bitmap.buffer
-				);
+			    );
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

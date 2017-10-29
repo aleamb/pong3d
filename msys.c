@@ -1,9 +1,9 @@
 /**
-	@file msys.c
-	@author Alejandro Ambroa
-	@date 1 Oct 2017
-	@brief System functions (mainly SDL wrapped functions). 
-*/
+  @file msys.c
+  @author Alejandro Ambroa
+  @date 1 Oct 2017
+  @brief System functions (mainly SDL wrapped functions). 
+ */
 
 #include "msys.h"
 #include <SDL2/SDL.h>
