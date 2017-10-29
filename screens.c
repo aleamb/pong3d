@@ -1,3 +1,10 @@
+/**
+	@file screens.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Code for rendering screens. 
+*/
+
 #include "screens.h"
 #include "geometry.h"
 #include "renderer.h"
@@ -7,12 +14,26 @@
 #include "pong3d.h"
 #include "tasks.h"
 
+#define FONT_SIZE 48
+#define TEXT_SIZE_SCALE 0.02
+
+float player_text_score_coords[2];
+float computer_text_score_coords[2];
+
+void init_screens() {
+	player_text_score_coords[0] = -stage.width / 2.0f + 0.1;
+	player_text_score_coords[1] = -stage.height / 2.0f + 0.05f;
+	computer_text_score_coords[0] = stage.width / 2.0f - 0.15;
+	computer_text_score_coords[1] = -stage.height / 2.0f + 0.05f;
+	
+}
+
 void render_player_wins_screen() {
 	render_stage();
 	render_ball();
 	render_opponent_stick();
 	render_pong_element(&overlay);
-	render_text("Player wins", 0, 0, 0.02, 48);
+	render_text("Player wins", 0, 0, TEXT_SIZE_SCALE, FONT_SIZE);
 
 }
 
@@ -21,7 +42,7 @@ void render_opp_wins_screen() {
 	render_ball();
 	render_opponent_stick();
 	render_pong_element(&overlay);
-	render_text("Computer wins", 0, 0, 0.02, 48);
+	render_text("Computer wins", 0, 0, TEXT_SIZE_SCALE, FONT_SIZE);
 
 }
 
@@ -39,7 +60,7 @@ void render_start_screen() {
 	render_stage();
 	reset_overlay();
 	render_overlay();
-	render_text("Click on screen to begin", 0.0f, 0.0f, 0.02, 48);
+	render_text("Click on screen to begin", 0.0f, 0.0f, TEXT_SIZE_SCALE, FONT_SIZE);
 
 }
 
@@ -51,9 +72,9 @@ void render_finish_screen(int player_score, int computer_score) {
 void render_scores(int player_score, int computer_score) {
 	char text[16];
 	sprintf(text, "YOU> %d", player_score);
-	render_text(text, -stage.width  / 2.0f + 0.1, -stage.height / 2.0f + 0.05, 0.02, 48);
+	render_text(text, player_text_score_coords[0], player_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE);
 	sprintf(text, "Computer> %d", computer_score);
-	render_text(text, stage.width /2.0f - 0.15, -stage.height / 2.0f + 0.05, 0.02, 48);
+	render_text(text, computer_text_score_coords[0], computer_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE); 
 }
 
 void render(int elapsedFrames) {

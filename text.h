@@ -1,3 +1,10 @@
+/**
+	@file text.h
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Definitions for text rendering.
+*/
+
 #ifndef _TEXT_H_
 #define _TEXT_H_
 

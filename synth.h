@@ -1,3 +1,11 @@
+/**
+	@file synth.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Simple software synthetizer based on book "BasicSynth" by Daniel Mitchell. 
+*/
+
+
 #ifndef _SYNTH_H_
 #define _SYNTH_H_
 

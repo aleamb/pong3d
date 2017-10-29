@@ -1,3 +1,10 @@
+/**
+	@file sounds.h
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Generation of game sounds. 
+*/
+
 #ifndef _SOUND_H_
 #define _SOUND_H_
 

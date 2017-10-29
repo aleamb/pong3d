@@ -1,7 +1,14 @@
+/**
+	@file synth.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Simple software synthetizer based on book "BasicSynth" by Daniel Mitchell. 
+*/
+
+
 #include "synth.h"
 #include <math.h>
 #include <stdlib.h>
-
 
 #define P_2PI 6.283185307f
 

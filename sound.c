@@ -1,3 +1,10 @@
+/**
+	@file sound.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Generation of game sounds. 
+*/
+
 #include "sound.h"
 #include "synth.h"
 #include "msys.h"

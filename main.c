@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 		exit(1);
 	}
 	create_elements(WINDOW_WIDTH, WINDOW_HEIGHT, STAGE_BLOCKS);
-
+	init_screens();
 	run_game();
 	cleanup();	
 	return 0;

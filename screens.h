@@ -1,3 +1,10 @@
+/**
+	@file screens.h
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Screens rendering definitions. 
+*/
+
 #ifndef _SCREENS_H_
 #define _SCREENS_H_
 
@@ -8,6 +15,6 @@ void render_opp_wins_screen();
 void render_start_screen();
 void render_finish_screen(int player_score, int computer_score);
 void render(int);
-
+void init_screens();
 
 #endif

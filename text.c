@@ -1,3 +1,12 @@
+/**
+
+	@file text.c
+	@author Alejandro Ambroa
+	@date 1 Oct 2017
+	@brief Rendering text using freetype lib. 
+
+*/
+
 #include "text.h"
 #include "geometry.h"
 #include <stdio.h>

@@ -1,3 +1,10 @@
+/**
+  @file tasks.h
+  @author Alejandro Ambroa
+  @date 1 Oct 2017
+  @brief Tasks for all game logic. 
+ */
+
 #include "tasks.h"
 
 #include "pong3d.h"
@@ -9,6 +16,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+float to_position[2] = { 0, 0 };
+int framesToPosition = 0;
+bool lookDesviation = false;
 
 float overlay_fadeout;
 int  overlay_fadeout_frames;
@@ -61,13 +71,17 @@ int loading_players_task(int elapsedFrames, int time_delta, int period) {
 	return 0;
 }
 
+static void set_initial_ball_velocity() {
+	srand(time(NULL));
+	ball_speed_vector[0] = ((rand() % 1) ? 1.0 : -1.0) * stage.width / (FPS * (4 + rand() % 1));
+	ball_speed_vector[1] = ((rand() % 1) ? 1.0 : -1.0) * stage.height / (FPS * (4 + rand() % 1));
+	ball_speed_vector[2] = -stage.large / (FPS - (ball_decrement * ball_frames_dec_factor));
+}
+
 int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event) {
 	if (elapsedFrames == 0) {
 		ball_decrement = INITIAL_BALL_VELOCITY_DECREMENT;
-		srand(time(NULL));
-		ball_speed_vector[0] = ((rand() % 1) ? 1.0 : -1.0) * stage.width / (FPS * (4 + rand() % 1));
-		ball_speed_vector[1] = ((rand() % 1) ? 1.0 : -1.0) * stage.height / (FPS * (4 + rand() % 1));
-		ball_speed_vector[2] = -stage.large / (FPS - (ball_decrement * ball_frames_dec_factor));
+		set_initial_ball_velocity();
 		reset_ball_position();
 		reset_player_stick_position();
 		reset_opponent_stick_position();
@@ -85,25 +99,27 @@ int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event) {
 	return 0;
 }
 
-
+/**
+  Main game logic.
+ */
 
 int playing_task(int elapsedFrames, int pendingEvent) {
 
 	float hit_wall_vector[3];
-	static float to_position[2] = { 0, 0 };
-	static int framesToPosition = 0;
 	int resetFrames = 0;
-	static bool lookDesviation = false;
 
 	if (ball_hit_wall(hit_wall_vector, &stage, &ball)) {
 		ball_speed_vector[0] *= hit_wall_vector[0];
 		ball_speed_vector[1] *= hit_wall_vector[1];
 		play_wall_hit_sound();
 	}
+	// computer return ball
 	if (gameState == OPP_RETURN) {
 		if (elapsedFrames == 0) {
+			// calculate vector from ball to center of screen for moving there
 			to_position[0] = -opponent_stick.x;
 			to_position[1] = -opponent_stick.y;
+			// velocity of movement (magic number)
 			framesToPosition = 10;
 			if (framesToPosition > 0) {
 				to_position[0] /= framesToPosition;
@@ -113,33 +129,45 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 				to_position[1] = 0;
 			}
 		}
+		// if ball is in player Z coord...
 		if (equals(ball.z - ball.width, player_stick.z)) {
-			if (ball_in_player_stick()) {
+			if (ball_in_player_stick()) { // test if hits in player stick
 				play_player_pong_sound();
+				// invserse Z component of velocity
 				ball_speed_vector[2] *= -1.0f;
 				change_state(PLAYER_RETURN);
+				// for float precision problems, we must move the ball to positin where stick surface touch ball. 
 				ball.z = player_stick.z - ball.width;
 				ball.model_matrix[14] = ball.z;
+
+
 				to_position[0] = to_position[1] = 0;
+
+				// increase ball speed
 				ball_decrement++;
 				int sub_frames = ((FPS - ball_frames_dec_factor * ball_decrement));
 				if (sub_frames > 0)
 					ball_speed_vector[2] = -stage.large / sub_frames;
+
+				// register point where player hits the ball for, in next frames, calculate desviation vector to apply to ball 
 				player_stick.xprev = player_stick.x;
 				player_stick.yprev = player_stick.y;
 				player_stick.zprev = player_stick.z;
+				// enable apply desviation vector
 				lookDesviation = true;
 
 			} else {
 				change_state(OPP_WINS);
 			}
 		}
+		// move stick to center
 		if (!equals(opponent_stick.x, 0.0) || !equals(opponent_stick.y, 0.0))
 			move_opponent_stick(opponent_stick.x + to_position[0], opponent_stick.y + to_position[1]);
-
+		// no reset frame counter
 		resetFrames = 0;
-	} else if (gameState == PLAYER_RETURN) {
-		if (equals(ball.z + ball.width, opponent_stick.z)) {
+	} else if (gameState == PLAYER_RETURN) { // player returns ball
+
+		if (equals(ball.z + ball.width, opponent_stick.z)) { // if ball is in Z coord of computer stick...
 
 			if (ball_in_opponent_stick()) {
 				play_opponent_pong_sound();
@@ -153,7 +181,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 				change_state(PLAYER_WINS);
 			}
 		} else {
-
+			// Computer IA. Look ball position each 4 frames and got to position with velocity
 			if (elapsedFrames == 4) {
 				to_position[0] = ball.x - opponent_stick.x;
 				to_position[1] = ball.y - opponent_stick.y ;
@@ -165,20 +193,23 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 					to_position[0] = 0;
 					to_position[1] = 0;
 				}
+				// reset frames counter to check ball position again
 				resetFrames = 1;
 
 			}
+			// move computer stick to calculated ball position
 			if (!equals(opponent_stick.x, ball.x) || !equals(opponent_stick.y, 0.0))
 				move_opponent_stick(opponent_stick.x + to_position[0], opponent_stick.y + to_position[1]);
 
 		}
 		if (lookDesviation) {
+			// desviation of ball depending on player's stick movement. 6.0 is a magic number to smooth ball desviation
 			ball_speed_vector[0] += (player_stick.x - player_stick.xprev) * (6.0f / FPS);
 			ball_speed_vector[1] += (player_stick.y - player_stick.yprev) * (6.0f / FPS);
 			lookDesviation = false;
 		}
-
 	}
+	// ball movement
 	move_ball(ball.x + ball_speed_vector[0], ball.y + ball_speed_vector[1], ball.z + ball_speed_vector[2]);
 	render(0);
 	return resetFrames;
@@ -219,32 +250,30 @@ int player_wins_task(int elapsedFrames) {
 
 }
 
-
-
 int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball) {
 	outVector[0] = 1.0;
 	outVector[1] = 1.0;
-	if (ball->x >= (stage->width / 2.0f - ball->width)) {
+	if (ball->x >= (stage->width2 - ball->width)) {
 		outVector[0] = -1.0f;
-		move_ball(stage->width / 2.0f - ball->width, ball->y, ball->z);
+		move_ball(stage->width2 - ball->width, ball->y, ball->z);
 		return 1;
 	}
-	if (ball->x < (-stage->width / 2.0f + ball->width)) {
+	if (ball->x < (-stage->width2 + ball->width)) {
 		outVector[0] = -1.0f;
-		move_ball(-stage->width / 2.0f + ball->width, ball->y, ball->z);
+		move_ball(-stage->width2 + ball->width, ball->y, ball->z);
 		return 1;
 
 	}
-	if (ball->y > (stage->height / 2.0f - ball->width)) {
+	if (ball->y > (stage->height2 - ball->width)) {
 		outVector[1] = -1.0f;
-		move_ball(ball->x, stage->height / 2.0f - ball->width, ball->z);
+		move_ball(ball->x, stage->height2 - ball->width, ball->z);
 
 		return 1;
 	}
 
-	if (ball->y < (-stage->height / 2.0f + ball->width)) {
+	if (ball->y < (-stage->height2 + ball->width)) {
 		outVector[1] = -1.0f;
-		move_ball(ball->x, -stage->height / 2.0f + ball->width, ball->z);
+		move_ball(ball->x, -stage->height2 + ball->width, ball->z);
 
 		return 1;
 	}
@@ -252,13 +281,10 @@ int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball) {
 	return 0;
 
 }
+
 int opponent_service_task(int elapsedFrames) {
 	ball_decrement = INITIAL_BALL_VELOCITY_DECREMENT;
-	srand(time(NULL));
-	ball_speed_vector[0] = ((rand() % 1) ? 1.0 : -1.0) * stage.width / (FPS * (4 + rand() % 1));
-	ball_speed_vector[1] = ((rand() % 1) ? 1.0 : -1.0) * stage.height / (FPS * (4 + rand() % 1));
-	ball_speed_vector[2] = stage.large / (FPS - (ball_decrement * ball_frames_dec_factor));
-
+	set_initial_ball_velocity();
 	reset_ball_position();
 	reset_player_stick_position();
 	reset_opponent_stick_position();
@@ -277,3 +303,4 @@ int finished_task(int elapsedFrames) {
 	}
 	return 0;
 }
+

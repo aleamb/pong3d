@@ -1,3 +1,10 @@
+/**
+	@file tasks.h
+  	@author Alejandro Ambroa
+  	@date 1 Oct 2017
+  	@brief Tasks for all game logic. 
+*/
+
 #ifndef _TASKS_H_
 #define _TASKS_H_
 
