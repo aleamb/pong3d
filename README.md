@@ -16,7 +16,7 @@ This program depends on:
 
 ### Build on Unix/Linux systems
 
-* Install dependencies SDL2, Freetype2, Glew, OpenGL 4 using your favorite package manager.
+* Install dependencies SDL2, Freetype2, Glew and OpenGL 4 using your favorite package manager.
 
 By example, in Debian based systems:
 
@@ -32,16 +32,12 @@ cd pong3d
 make
 ```
 
-### Build on Windows systems
-
-#### Using MSYS2 (http://www.msys2.org/)
-
-
-* Install dependencies SDL2, Freetype2, Glew, OpenGL 4
+* Run with
 
 ```
-pacman 
- 
+./pong3d
+
+```
 
 ## License
 
