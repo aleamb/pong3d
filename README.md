@@ -4,7 +4,7 @@ A Pong game in three dimensions write in C using SDL2 and OpenGL 4, inspired in 
 
 ## Building and running
 
-This program depens on:
+This program depends on:
 
 * SDL2 lib
 * Freetype2 lib
