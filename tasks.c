@@ -63,6 +63,7 @@ int loading_players_task(int elapsedFrames, int time_delta, int period) {
 
 	} else {
 		play_start_sound();
+		sys_show_cursor(0);
 		player_score = 0;
 		opponent_score = 0;
 		balls = BALLS;
@@ -86,7 +87,6 @@ int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event) {
 		reset_player_stick_position();
 		reset_opponent_stick_position();
 		sys_mouse_center(WINDOW_WIDTH, WINDOW_HEIGHT);
-		sys_show_cursor(0);
 		balls--;
 		render(0);
 		return 0;

@@ -70,8 +70,6 @@ void init_game() {
 	reset_ball_position();
 	player_score = 0;
 	opponent_score = 0;
-	sys_show_cursor(0);
-	sys_mouse_center(WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
 void run_game() {
