@@ -13,14 +13,35 @@ This program depends on:
 * Glew
 * OpenGL libraries (core 4.0)
 
-To build, Clone repo and
+
+### Build on Unix/Linux systems
+
+* Install dependencies SDL2, Freetype2, Glew, OpenGL 4 using your favorite package manager.
+
+By example, in Debian based systems:
+
+```
+sudo apt-get install libsdl2-dev libglew-dev libfreetype6-dev
+```
+
+* Build 
 
 ```
 cd pong3d
 ./configure
 make
-./pong3d
 ```
+
+### Build on Windows systems
+
+#### Using MSYS2 (http://www.msys2.org/)
+
+
+* Install dependencies SDL2, Freetype2, Glew, OpenGL 4
+
+```
+pacman 
+ 
 
 ## License
 
