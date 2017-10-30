@@ -285,6 +285,7 @@ int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball) {
 int opponent_service_task(int elapsedFrames) {
 	ball_decrement = INITIAL_BALL_VELOCITY_DECREMENT;
 	set_initial_ball_velocity();
+	ball_speed_vector[2] *= -1.0f;
 	reset_ball_position();
 	reset_player_stick_position();
 	reset_opponent_stick_position();
