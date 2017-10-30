@@ -13,19 +13,15 @@ This program depends on:
 
 To build, Clone repo and
 
-### Linux system
-
 ```
 cd pong3d
 ./configure
 make
 ./pong3d
 ```
-### Windows system
-
-
 
 ## License
 
 Pong3d is licensed under the MIT license. (http://opensource.org/licenses/MIT)
+
 
