@@ -24,23 +24,23 @@ By example, in Debian based systems:
 sudo apt-get install libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
-* Build 
-
+* Building
 ```
-cd pong3d
-./configure
 make
 ```
 
 * Run with
-
 ```
 ./pong3d
-
 ```
+
+### Build on Windows Systems.
+
+#### Using MSYS2 and mingw (32 bits)
+
+1. Download and install msys2-i686 (www.msys2.org)
+
 
 ## License
 
 Pong3d is licensed under the MIT license. (http://opensource.org/licenses/MIT)
-
-
