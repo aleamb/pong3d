@@ -4,10 +4,13 @@
 AC_PREREQ([2.69])
 AC_INIT([pong3d], [1.0], [])
 
-AM_INIT_AUTOMAKE(pong3d, 1.0)
+
+AM_INIT_AUTOMAKE()
 
 #AC_CONFIG_SRCDIR([tasks.c])
 #AC_CONFIG_HEADERS([pong3d.h])
+
+AC_SUBST(CFLAGS, [ ])
 
 # Checks for programs.
 AC_PROG_CC

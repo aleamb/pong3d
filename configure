@@ -640,8 +640,8 @@ EXEEXT
 ac_ct_CC
 CPPFLAGS
 LDFLAGS
-CFLAGS
 CC
+CFLAGS
 AM_BACKSLASH
 AM_DEFAULT_VERBOSITY
 AM_DEFAULT_V
@@ -2132,6 +2132,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 am__api_version='1.15'
 
 ac_aux_dir=
@@ -2646,9 +2647,8 @@ fi
 
 
 # Define the identity of the package.
-
- PACKAGE=pong3d
- VERSION=1.0
+ PACKAGE='pong3d'
+ VERSION='1.0'
 
 
 cat >>confdefs.h <<_ACEOF
@@ -2744,6 +2744,9 @@ fi
 
 #AC_CONFIG_SRCDIR([tasks.c])
 #AC_CONFIG_HEADERS([pong3d.h])
+
+CFLAGS=
+
 
 # Checks for programs.
 ac_ext=c
