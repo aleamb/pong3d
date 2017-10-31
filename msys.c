@@ -2,11 +2,12 @@
   @file msys.c
   @author Alejandro Ambroa
   @date 1 Oct 2017
-  @brief System functions (mainly SDL wrapped functions). 
+  @brief System functions (mainly SDL wrapped functions).
  */
 
 #include "msys.h"
 #include <SDL2/SDL.h>
+#include <stdio.h>
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -153,5 +154,3 @@ static void format_event(SDL_Event* event, SysEvent* sysEvent) {
 	sysEvent->y = event->motion.y;
 
 }
-
-
