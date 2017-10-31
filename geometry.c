@@ -2,7 +2,7 @@
 	@file geometry.c
 	@author Alejandro Ambroa
 	@date 1 Oct 2017
-	@brief Game objects for pong3d and utils functions for geometry tranformations. 
+	@brief Game objects for pong3d and utils functions for geometry tranformations.
 */
 #include "geometry.h"
 #include <math.h>
@@ -322,7 +322,7 @@ void setup_ball(PONG_ELEMENT* ball, int segments, float radius, const float* col
 
 void build_circle(PONG_ELEMENT* element, float radius, int segments, const float* color) {
 	element->vertex_count = (segments + 2);
-	element->vertex = (float*)calloc(element->vertex_count * VERTEX_SIZE, sizeof(float));	
+	element->vertex = (float*)calloc(element->vertex_count * VERTEX_SIZE, sizeof(float));
 	element->elements_count = 0;
 	element->vertexType = GL_TRIANGLE_FAN;
 	int vertex = 1;
@@ -387,7 +387,7 @@ void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const
 }
 
 
-void create_elements(const float window_width, const float window_height, int stage_blocks)  {
+void create_elements(float window_width, float window_height, int stage_blocks)  {
 	/**
 	  Config for geometry of all objects in game
 	  : */
@@ -399,7 +399,7 @@ void create_elements(const float window_width, const float window_height, int st
 	float overlay_alpha = OVERLAY_ALPHA;
 	float aspect = (float)window_width / window_height;
 	float stick_width = stage_width / 6.0f;
-	float stick_color[] = { 0.5, 0.5, 0.5, 0.5 }; 
+	float stick_color[] = { 0.5, 0.5, 0.5, 0.5 };
 	int ball_segments = 20;
 	float ball_radius = stage_large / 80.0f;
 	float ball_color[4] = { 1.0, 1.0, 1.0, 1.0 };
@@ -508,5 +508,3 @@ void move_ball(float x, float y, float z) {
 
 
 }
-
-

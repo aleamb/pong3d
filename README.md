@@ -34,13 +34,6 @@ make
 ./pong3d
 ```
 
-### Build on Windows Systems.
-
-#### Using MSYS2 and mingw (32 bits)
-
-1. Download and install msys2-i686 (www.msys2.org)
-
-
 ## License
 
 Pong3d is licensed under the MIT license. (http://opensource.org/licenses/MIT)
