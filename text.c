@@ -56,10 +56,10 @@ void render_text(const char* text, float x, float y, float scale, int font_size)
 		FT_GlyphSlot g = face->glyph;
 
 		GLfloat box[] = {
-			1.0 + dx, 1.0, 0.2, 1.0, 1, 1,
-			1.0 + dx, 0.0, 0.2, 1.0, 1, 0,
-			0   + dx, 1.0, 0.2, 1.0, 0, 1,
-			0   + dx, 0,   0.2, 1.0, 0, 0};
+			1.0f + dx, 1.0f, 0.2f, 1.0f, 1.0f, 1.0f,
+			1.0f + dx, 0.0f, 0.2f, 1.0f, 1.0f, 0,
+			0   + dx, 1.0f, 0.2f, 1.0f, 0, 1.0f,
+			0   + dx, 0,   0.2f, 1.0f, 0, 0};
 
 		dx += 1.0;
 
