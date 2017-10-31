@@ -76,7 +76,7 @@ void run_game() {
 
 	int elapsedFrames = 0;
 	unsigned int startTime, elapsedTime;
-	int period = ((1.0f / FPS) * 1000.0f) ;
+	unsigned int period = (unsigned int)((1.0f / FPS) * 1000.0f) ;
 	int pendingEvent = 0;
 	SysEvent event;
 	bool firstLoop = true;
