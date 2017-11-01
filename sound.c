@@ -82,8 +82,8 @@ int init_sound(int sample_freq) {
 	synthParams.decayTime = 0.8f;
 	synthParams.releaseTime = 0.4f;
 	synthParams.decayValue = 0.1f;
-	synthParams.filterBeta1 = 0.4 ;
-	synthParams.filterBeta2 = 0.4;
+	synthParams.filterBeta1 = 0.4f ;
+	synthParams.filterBeta2 = 0.4f;
 	synthParams.oscillator1_type = SIN;
 	synthParams.oscillator2_type = COS;
 	synthParams.oscillator1_freq = 1046.50f;

@@ -29,7 +29,7 @@ float opponent_z_coord;
 
 void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out) {
 	const float
-		y_scale = 1.0 / tan(M_PI / 180.0 * (fovy / 2.0)),
+		y_scale = 1.0f / (float)tan(M_PI / 180.0f * (fovy / 2.0f)),
 				x_scale = y_scale / aspect_ratio,
 				frustum_length = far_plane - near_plane;
 
@@ -293,7 +293,7 @@ void setup_ball(PONG_ELEMENT* ball, int segments, float radius, const float* col
 	ball->elements = (unsigned int*)calloc(ball->elements_count, sizeof(unsigned int));
 
 
-	for (p = 0, theta = -M_PI_2; p < segments; p++, theta += unit_angle)
+	for (p = 0, theta = (float)-M_PI_2; p < segments; p++, theta += unit_angle)
 	{
 		for (m = 0, phi = 0.0f; m < segments; m++, phi += unit_angle)
 		{
@@ -387,7 +387,7 @@ void setup_stick_shadows(PONG_ELEMENT* element, float width, float height, const
 }
 
 
-void create_elements(float window_width, float window_height, int stage_blocks)  {
+void create_elements(int window_width, int window_height, int stage_blocks)  {
 	/**
 	  Config for geometry of all objects in game
 	  : */
@@ -395,15 +395,15 @@ void create_elements(float window_width, float window_height, int stage_blocks) 
 	float stage_large = 1.5f;
 	float blocks_large = stage_large / stage_blocks;
 
-	float stage_color[] = { 0.0, 1.0, 0.0, 0.2 };
+	float stage_color[] = { 0.0f, 1.0f, 0.0f, 0.2f };
 	float overlay_alpha = OVERLAY_ALPHA;
 	float aspect = (float)window_width / window_height;
 	float stick_width = stage_width / 6.0f;
-	float stick_color[] = { 0.5, 0.5, 0.5, 0.5 };
+	float stick_color[] = { 0.5f, 0.5f, 0.5f, 0.5f };
 	int ball_segments = 20;
 	float ball_radius = stage_large / 80.0f;
-	float ball_color[4] = { 1.0, 1.0, 1.0, 1.0 };
-	float shadows_color[] = { 1.0, 1.0, 1.0, 0.2f };
+	float ball_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	float shadows_color[] = { 1.0f, 1.0f, 1.0f, 0.2f };
 	opponent_z_coord = -stage_blocks * blocks_large;
 
 	setup_stage(&stage, window_width, window_height, stage_blocks, stage_width, blocks_large, stage_color);

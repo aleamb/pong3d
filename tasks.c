@@ -50,7 +50,7 @@ int start_screen_task(int elapsedFrames) {
 int loading_players_task(int elapsedFrames, int time_delta, int period) {
 	if (elapsedFrames == 0) {
 		// overlay fading out velocity
-		overlay_fadeout_frames = FPS * 0.3f;
+		overlay_fadeout_frames = (int)(FPS * 0.3f);
 		overlay_fadeout = OVERLAY_ALPHA / overlay_fadeout_frames;
 		overlay_fadeout_alpha = overlay_fadeout;
 	}
@@ -74,8 +74,8 @@ int loading_players_task(int elapsedFrames, int time_delta, int period) {
 
 static void set_initial_ball_velocity() {
 	srand(time(NULL));
-	ball_speed_vector[0] = ((rand() % 1) ? 1.0 : -1.0) * stage.width / (FPS * (4 + rand() % 1));
-	ball_speed_vector[1] = ((rand() % 1) ? 1.0 : -1.0) * stage.height / (FPS * (4 + rand() % 1));
+	ball_speed_vector[0] = ((rand() % 1) ? 1.0f : -1.0f) * stage.width / (FPS * (4 + rand() % 1));
+	ball_speed_vector[1] = ((rand() % 1) ? 1.0f : -1.0f) * stage.height / (FPS * (4 + rand() % 1));
 	ball_speed_vector[2] = -stage.large / (FPS - (ball_decrement * ball_frames_dec_factor));
 }
 
@@ -185,7 +185,7 @@ int playing_task(int elapsedFrames, int pendingEvent) {
 			if (elapsedFrames == 4) {
 				to_position[0] = ball.x - opponent_stick.x;
 				to_position[1] = ball.y - opponent_stick.y ;
-				framesToPosition = fabs((opponent_stick.z - ball.z) / ball_speed_vector[2]);
+				framesToPosition = (int)fabs((opponent_stick.z - ball.z) / ball_speed_vector[2]);
 				if (framesToPosition > 0) {
 					to_position[0] /= framesToPosition;
 					to_position[1] /= framesToPosition;

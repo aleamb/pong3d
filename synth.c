@@ -13,7 +13,7 @@
 #define P_2PI 6.283185307f
 
 float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
-  float value = 0.0f;
+  double value = 0.0;
   switch(type) {
     case SIN:
       value = sin(*ang);
@@ -22,9 +22,9 @@ float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
         *ang -= P_2PI;
       break;
     case TRIANGLE: {
-      float triValue = *ang * M_PI_2;
+      double triValue = *ang * M_PI_2;
       *ang += incr;
-      if (triValue < 0)
+      if (triValue < 0.0)
         value = 1.0 + triValue;
       else
         value = 1.0 - triValue;
@@ -33,7 +33,7 @@ float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
       }
       break;
     case SAW:
-      value = (*ang / M_PI) - 1.0f;
+      value = (*ang / M_PI) - 1.0;
       *ang += incr;
       if (*ang >= P_2PI)
         *ang -= P_2PI;
@@ -47,7 +47,7 @@ float oscillator(OSCILLATOR_TYPE type, float* ang, float incr) {
     case NONE:
       value = 0;
   }
-  return value;
+  return (float)value;
 }
 
 int synthetize(SYNTH* synthParams, sample_t** out_samples, int sample_freq) {
@@ -56,12 +56,12 @@ int synthetize(SYNTH* synthParams, sample_t** out_samples, int sample_freq) {
   float oldValue = 0.0f;
   float volume = synthParams->volume;
 
-  int samples_count = (float)sample_freq * synthParams->totalTime;
+  int samples_count = (int)((float)sample_freq * synthParams->totalTime);
   sample_t *samples = (sample_t*)malloc(samples_count * sizeof(sample_t));
 
-  int attackTimeSamples = (synthParams->attackTime * (float)sample_freq);
-  int decayTimeSamples = (synthParams->decayTime * (float)sample_freq);
-  int releaseTimeSamples = (synthParams->releaseTime * (float)sample_freq);
+  int attackTimeSamples = (int)(synthParams->attackTime * (float)sample_freq);
+  int decayTimeSamples = (int)(synthParams->decayTime * (float)sample_freq);
+  int releaseTimeSamples = (int)(synthParams->releaseTime * (float)sample_freq);
 
   int envCount = attackTimeSamples;
   float slope = volume / (float)attackTimeSamples;
@@ -117,7 +117,7 @@ int synthetize(SYNTH* synthParams, sample_t** out_samples, int sample_freq) {
   // simple reverb
   float delayTime = synthParams->delayTime;
   float reverbSize = synthParams->reverbSize;
-  int delaySamples = (delayTime * (float)sample_freq);
+  int delaySamples = (int)(delayTime * (float)sample_freq);
   if (delaySamples > 0) {
     for (int i = 0; i < samples_count - delaySamples; i++) {
     samples[i + delaySamples] += samples[i] * (sample_t)reverbSize;

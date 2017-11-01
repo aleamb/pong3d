@@ -15,15 +15,16 @@
 #include "tasks.h"
 
 #define FONT_SIZE 48
-#define TEXT_SIZE_SCALE 0.02
+#define TEXT_SIZE_SCALE 0.02f
 
 float player_text_score_coords[2];
 float computer_text_score_coords[2];
+char score_text[16];
 
 void init_screens() {
-	player_text_score_coords[0] = -stage.width / 2.0f + 0.1;
+	player_text_score_coords[0] = -stage.width / 2.0f + 0.1f;
 	player_text_score_coords[1] = -stage.height / 2.0f + 0.05f;
-	computer_text_score_coords[0] = stage.width / 2.0f - 0.15;
+	computer_text_score_coords[0] = stage.width / 2.0f - 0.15f;
 	computer_text_score_coords[1] = -stage.height / 2.0f + 0.05f;
 
 }
@@ -33,7 +34,7 @@ void render_player_wins_screen() {
 	render_ball();
 	render_opponent_stick();
 	render_pong_element(&overlay);
-	render_text("Player wins", 0, 0, TEXT_SIZE_SCALE, FONT_SIZE);
+	render_text("Player wins", 0.0f, 0.0f, TEXT_SIZE_SCALE, FONT_SIZE);
 
 }
 
@@ -42,7 +43,7 @@ void render_opp_wins_screen() {
 	render_ball();
 	render_opponent_stick();
 	render_pong_element(&overlay);
-	render_text("Computer wins", 0, 0, TEXT_SIZE_SCALE, FONT_SIZE);
+	render_text("Computer wins", 0.0f, 0.0f, TEXT_SIZE_SCALE, FONT_SIZE);
 
 }
 
@@ -70,11 +71,10 @@ void render_finish_screen(int player_score, int computer_score) {
 }
 
 void render_scores(int player_score, int computer_score) {
-	char text[16];
-	sprintf(text, "YOU> %d", player_score);
-	render_text(text, player_text_score_coords[0], player_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE);
-	sprintf(text, "Computer> %d", computer_score);
-	render_text(text, computer_text_score_coords[0], computer_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE); 
+	sprintf(score_text, "YOU> %d", player_score);
+	render_text(score_text, player_text_score_coords[0], player_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE);
+	sprintf(score_text, "Computer> %d", computer_score);
+	render_text(score_text, computer_text_score_coords[0], computer_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE); 
 }
 
 void render(int elapsedFrames) {

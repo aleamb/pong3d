@@ -59,7 +59,7 @@ extern PONG_ELEMENT overlay;
 extern PONG_ELEMENT startText;
 
 
-void create_elements(float stage_width, float stage_height, int num_blocks);
+void create_elements(int stage_width, int stage_height, int num_blocks);
 void dispose_elements();
 void load_identity_matrix(float *out);
 void create_projection_matrix(float fovy, float aspect_ratio, float near_plane, float far_plane, float* out); 
