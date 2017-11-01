@@ -36,19 +36,20 @@ int vertex_shader_created = 0;
 int fragment_shader_created = 0;
 
 const GLchar* vertex_shader_source =
-"#version 400 core\n \
-		in vec4 in_position;\n \
-		in vec4 in_color;\n \
-		in vec4 in_normal;\n \
-		in vec2 in_uv;\n \
-		in vec4 extra;\n \
+"#version 330 core\n \
+precision highp float;\n \
+		layout(location = 0) in vec4 in_position;\n \
+		layout(location = 1) in vec4 in_color;\n \
+		layout(location = 2) in vec4 in_normal;\n \
+		layout(location = 3) in highp vec2 in_uv;\n \
+		layout(location = 4) in vec4 extra;\n \
 		uniform mat4 projectionMatrix;\n \
 		uniform mat4 viewMatrix;\n \
 		uniform mat4 modelMatrix;\n \
 		uniform mat4 offsetProjectionMatrix;\n \
 		uniform bool applyOffset;\n \
-		out vec4 outColor;\n \
-		out vec2 outUV;\n \
+		layout(location = 5) out vec4 outColor;\n \
+		layout(location = 6) out vec2 outUV;\n \
 		out vec4 outNormal;\n \
 		out vec4 outExtra;\n \
 		void main(void) {\n \
@@ -69,9 +70,10 @@ const GLchar* vertex_shader_source =
  */
 
 const GLchar* fragment_shader_source =
-"#version 400 core\n \
-		in vec4 outColor;\n \
-		in vec2 outUV;\n \
+"#version 330 core\n \
+precision highp float;\n \
+		layout(location = 5) in highp vec4 outColor;\n \
+		layout(location = 6) in highp vec2 outUV;\n \
 		out vec4 color;\n \
 		uniform bool stageWireframe;\n \
 		uniform sampler2D tex;\n \
@@ -202,8 +204,6 @@ int init_renderer(int width, int height) {
 		return -1;
 	}
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glDisable(GL_CULL_FACE);
-	glPolygonMode(GL_FRONT, GL_FILL);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 

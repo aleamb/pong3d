@@ -21,6 +21,9 @@
 #include <time.h>
 #include <math.h>
 
+#ifdef _WINDOWS
+#include <windows.h>
+#endif
 
 void run_game();
 void init_game();
@@ -28,8 +31,11 @@ int process_state(int, int, int, int, SysEvent* event);
 void cleanup();
 int process_events_task(SysEvent* event, int, int);
 
+#ifdef _WINDOWS
+INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, INT nCmdShow) {
+#else
 int main(int argc, char** argv) {
-
+#endif
 	if (sys_init_video(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
 		cleanup();
 		exit(1);
