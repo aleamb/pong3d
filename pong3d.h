@@ -55,6 +55,8 @@
  */
 #define INITIAL_BALL_VELOCITY_DECREMENT 15
 
+#define FONT_SIZE 48
+
 typedef enum {
 
 	STARTING,

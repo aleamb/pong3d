@@ -14,7 +14,6 @@
 #include "pong3d.h"
 #include "tasks.h"
 
-#define FONT_SIZE 48
 #define TEXT_SIZE_SCALE 0.02f
 
 float player_text_score_coords[2];
