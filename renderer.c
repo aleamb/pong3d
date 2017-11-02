@@ -37,6 +37,7 @@ int fragment_shader_created = 0;
 
 const GLchar* vertex_shader_source =
 "#version 330 core\n \
+#extension GL_ARB_separate_shader_objects : enable\n \
 precision highp float;\n \
 		layout(location = 0) in vec4 in_position;\n \
 		layout(location = 1) in vec4 in_color;\n \
@@ -71,6 +72,7 @@ precision highp float;\n \
 
 const GLchar* fragment_shader_source =
 "#version 330 core\n \
+#extension GL_ARB_separate_shader_objects : enable\n \
 precision highp float;\n \
 		layout(location = 5) in highp vec4 outColor;\n \
 		layout(location = 6) in highp vec2 outUV;\n \
