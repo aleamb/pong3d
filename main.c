@@ -114,7 +114,10 @@ void run_game() {
 			wait_time = period - elapsedTime;	
 			firstLoop = false;
 		} else {
-			wait_time -= (sys_get_ticks() - startTime); 
+			wait_time -= (sys_get_ticks() - startTime);
+			if (wait_time < 0) {
+				wait_time = 0;
+			} 
 		}
 		/**
 			When ocurrs a event (like a mouse motion) waiting is interrupted, event processed
