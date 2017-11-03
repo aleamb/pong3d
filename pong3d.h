@@ -5,14 +5,11 @@
   @brief General definitions and data for game.
  */
 
-
-
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
 #include "geometry.h"
 #include <stdbool.h>
-
 
 #define WINDOW_TITLE "Pong 3D"
 
@@ -37,7 +34,10 @@
 // alpha value for overlay
 #define OVERLAY_ALPHA 0.8f
 
-#define INITIAL_BALL_SPEED_VECTOR { -0.1f,  0.05f, -1.3f }
+#define INITIAL_BALL_SPEED_VECTOR \
+    {                             \
+        -0.1f, 0.05f, -1.3f       \
+    }
 
 #define STAGE_COLOR { 0.0f, 1.0f, 0.0f, 0.2f };
 
@@ -59,18 +59,18 @@
 
 typedef enum {
 
-	STARTING,
-	STARTED,
-	LOADING_PLAYERS,
-	PLAYER_SERVICE,
-	PLAYER_RETURN,
-	OPP_RETURN,
-	OPP_SERVICE,
-	PLAYER_WINS,
-	OPP_WINS,
-	FINISHED,
-	EXIT
-}GAME_STATE;
+    STARTING,
+    STARTED,
+    LOADING_PLAYERS,
+    PLAYER_SERVICE,
+    PLAYER_RETURN,
+    OPP_RETURN,
+    OPP_SERVICE,
+    PLAYER_WINS,
+    OPP_WINS,
+    FINISHED,
+    EXIT
+} GAME_STATE;
 
 extern int balls;
 extern int player_score;
@@ -84,6 +84,5 @@ int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* st
 int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball);
 
 void change_state(GAME_STATE state);
-
 
 #endif

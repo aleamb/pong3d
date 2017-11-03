@@ -5,7 +5,6 @@
 	@brief Simple software synthetizer based on book "BasicSynth" by Daniel Mitchell. 
 */
 
-
 #ifndef _SYNTH_H_
 #define _SYNTH_H_
 
@@ -17,27 +16,26 @@ typedef enum {
     SAW,
     TRIANGLE,
     COS
-}OSCILLATOR_TYPE;
+} OSCILLATOR_TYPE;
 
 typedef struct {
-  float totalTime;
-  float volume;
-  float attackTime;
-  float decayTime;
-  float releaseTime;
-  float decayValue;
-  float filterBeta1;
-  float filterBeta2;
-  OSCILLATOR_TYPE oscillator1_type;
-  OSCILLATOR_TYPE oscillator2_type;
-  float oscillator1_freq;
-  float oscillator2_freq;
-  float delayTime;
-  float reverbSize;
+    float totalTime;
+    float volume;
+    float attackTime;
+    float decayTime;
+    float releaseTime;
+    float decayValue;
+    float filterBeta1;
+    float filterBeta2;
+    OSCILLATOR_TYPE oscillator1_type;
+    OSCILLATOR_TYPE oscillator2_type;
+    float oscillator1_freq;
+    float oscillator2_freq;
+    float delayTime;
+    float reverbSize;
 } SYNTH;
 
 int synthetize(SYNTH* synth_params, sample_t** samples_buffer, int sample_freq);
-void free_samples(sample_t* samples); 
+void free_samples(sample_t* samples);
 
 #endif
-
