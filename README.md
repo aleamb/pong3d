@@ -1,6 +1,6 @@
 # Pong3D
 
-Pong game in three dimensions write in C using SDL2 and OpenGL 4, recreation of  pong 3d game by Liquid Media (www.liquid.se/pong).
+Pong game in three dimensions write in C using SDL2 and OpenGL 4, inspired in pong 3d game by Liquid Media (www.liquid.se/pong).
 
 ![Pong3D](screenshot.png)
 
