@@ -11,6 +11,7 @@
 #include "geometry.h"
 #include "pong3d.h"
 #include "renderer.h"
+#include "msys.h"
 #include <ft2build.h>
 #include <stdio.h>
 #include FT_FREETYPE_H
@@ -36,7 +37,7 @@ static GLfloat box[] = {
 
 static GLuint textures[NUM_LETTERS] = { 0 };
 
-void render_text(const char* text, float x, float y, float scale, int font_size)
+void render_text(const char* text, float x, float y, float scale)
 {
 
     const char* p;
@@ -93,12 +94,12 @@ void render_text(const char* text, float x, float y, float scale, int font_size)
 int init_text_renderer()
 {
     if (FT_Init_FreeType(&ft)) {
-        fprintf(stderr, "Could not init freetype library\n");
+		log_error("Could not init freetype library\n");
         return -1;
     }
     freetype_initialized = 1;
     if (FT_New_Face(ft, "./fonts/main.ttf", 0, &face)) {
-        fprintf(stderr, "Could not open font\n");
+		log_error("Could not open font\n");
         return -1;
     }
 

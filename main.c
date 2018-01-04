@@ -27,32 +27,33 @@
 
 void run_game();
 void init_game();
-int process_state(int, int, int, int, SysEvent* event);
+int process_state(int, int, SysEvent* event);
 void cleanup();
-int process_events_task(SysEvent* event, int, int);
+int process_events_task(SysEvent* event);
 
 #ifdef _WINDOWS
-INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, INT nCmdShow)
+INT CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, INT nCmdShow)
 {
 #else
 int main(int argc, char** argv)
 {
 #endif
+
     if (sys_init_video(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
         cleanup();
-        exit(1);
+        exit(1000);
     }
     if (init_sound(SAMPLE_RATE) < 0) {
         cleanup();
-        exit(1);
+        exit(1001);
     }
     if (init_renderer(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
         cleanup();
-        exit(1);
+        exit(1002);
     }
     if (init_text_renderer() < 0) {
         cleanup();
-        exit(1);
+        exit(1003);
     }
     create_elements(WINDOW_WIDTH, WINDOW_HEIGHT, STAGE_BLOCKS);
     init_screens();
@@ -88,7 +89,7 @@ void run_game()
 
     int elapsedFrames = 0;
     unsigned int startTime, elapsedTime;
-    unsigned int period = 1000.0 / FPS;
+    unsigned int period = (unsigned int)(1000.0 / FPS);
     int pendingEvent = 0;
     SysEvent event;
     bool firstLoop = true;
@@ -103,14 +104,14 @@ void run_game()
     while (gameState != EXIT) {
         startTime = sys_get_ticks();
         if (pendingEvent) {
-            process_events_task(&event, elapsedFrames, period);
+            process_events_task(&event);
         }
         if (firstLoop || (startTime - time_last_frame) >= period) {
             if (currentState != gameState || reset_frames_counter) {
                 elapsedFrames = 0;
                 currentState = gameState;
             }
-            reset_frames_counter = process_state(elapsedFrames, startTime - time_last_frame, period, pendingEvent, &event);
+            reset_frames_counter = process_state(elapsedFrames, pendingEvent, &event);
 	    if (need_render()) {
 		render(elapsedFrames);
 	    }
@@ -136,7 +137,7 @@ void run_game()
     }
 }
 
-int process_state(int elapsedFrames, int time_delta, int period, int pendingEvent, SysEvent* event)
+int process_state(int elapsedFrames, int pendingEvent, SysEvent* event)
 {
     int reset_frames = 1;
     switch (gameState) {
@@ -145,14 +146,14 @@ int process_state(int elapsedFrames, int time_delta, int period, int pendingEven
         reset_frames = start_screen_task(elapsedFrames);
         break;
     case LOADING_PLAYERS:
-        reset_frames = loading_players_task(elapsedFrames, time_delta, period);
+        reset_frames = loading_players_task(elapsedFrames);
         break;
     case PLAYER_SERVICE:
         reset_frames = player_service_task(elapsedFrames, pendingEvent, event);
         break;
     case PLAYER_RETURN:
     case OPP_RETURN:
-        reset_frames = playing_task(elapsedFrames, pendingEvent);
+        reset_frames = playing_task(elapsedFrames);
         break;
     case PLAYER_WINS:
         reset_frames = player_wins_task(elapsedFrames);
@@ -172,7 +173,7 @@ int process_state(int elapsedFrames, int time_delta, int period, int pendingEven
     return reset_frames;
 }
 
-int process_events_task(SysEvent* event, int elapsedFrames, int period)
+int process_events_task(SysEvent* event)
 {
 
     switch (event->type) {

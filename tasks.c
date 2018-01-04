@@ -39,7 +39,7 @@ bool equals(float a, float b)
     return (bool)(fabs(a - b) <= ball.width);
 }
 
-int start_screen_task(int elapsedFrames)
+int start_screen_task()
 {
     sys_show_cursor(1);
     set_render();
@@ -48,7 +48,7 @@ int start_screen_task(int elapsedFrames)
     return 0;
 }
 
-int loading_players_task(int elapsedFrames, int time_delta, int period)
+int loading_players_task(int elapsedFrames)
 {
     if (elapsedFrames == 0) {
         // overlay fading out velocity
@@ -76,7 +76,7 @@ int loading_players_task(int elapsedFrames, int time_delta, int period)
 
 static void set_initial_ball_velocity()
 {
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     // 4 is a magic number
     ball_speed_vector[0] = ((rand() % 1) ? 1.0f : -1.0f) * stage.width / (FPS * (4 + rand() % 1));
     ball_speed_vector[1] = ((rand() % 1) ? 1.0f : -1.0f) * stage.height / (FPS * (4 + rand() % 1));
@@ -110,7 +110,7 @@ int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event)
   Main game logic.
  */
 
-int playing_task(int elapsedFrames, int pendingEvent)
+int playing_task(int elapsedFrames)
 {
 
     float hit_wall_vector[3];
@@ -254,30 +254,30 @@ int player_wins_task(int elapsedFrames)
     return 0;
 }
 
-int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball)
+int ball_hit_wall(float* outVector, PONG_ELEMENT* pStage, PONG_ELEMENT* pBall)
 {
     outVector[0] = 1.0;
     outVector[1] = 1.0;
-    if (ball->x >= (stage->width2 - ball->width)) {
+    if (pBall->x >= (pStage->width2 - pBall->width)) {
         outVector[0] = -1.0f;
-        move_ball(stage->width2 - ball->width, ball->y, ball->z);
+        move_ball(pStage->width2 - pBall->width, pBall->y, pBall->z);
         return 1;
     }
-    if (ball->x < (-stage->width2 + ball->width)) {
+    if (pBall->x < (-pStage->width2 + pBall->width)) {
         outVector[0] = -1.0f;
-        move_ball(-stage->width2 + ball->width, ball->y, ball->z);
+        move_ball(-pStage->width2 + pBall->width, pBall->y, pBall->z);
         return 1;
     }
-    if (ball->y > (stage->height2 - ball->width)) {
+    if (pBall->y > (pStage->height2 - pBall->width)) {
         outVector[1] = -1.0f;
-        move_ball(ball->x, stage->height2 - ball->width, ball->z);
+        move_ball(pBall->x, pStage->height2 - pBall->width, pBall->z);
 
         return 1;
     }
 
-    if (ball->y < (-stage->height2 + ball->width)) {
+    if (pBall->y < (-pStage->height2 + pBall->width)) {
         outVector[1] = -1.0f;
-        move_ball(ball->x, -stage->height2 + ball->width, ball->z);
+        move_ball(pBall->x, -pStage->height2 + pBall->width, pBall->z);
 
         return 1;
     }
@@ -285,7 +285,7 @@ int ball_hit_wall(float* outVector, PONG_ELEMENT* stage, PONG_ELEMENT* ball)
     return 0;
 }
 
-int opponent_service_task(int elapsedFrames)
+int opponent_service_task()
 {
     ball_decrement = INITIAL_BALL_VELOCITY_DECREMENT;
     set_initial_ball_velocity();

@@ -163,46 +163,46 @@ void setup_stick(PONG_ELEMENT* stick, float stick_width, float stick_height, con
     load_identity_matrix(stick->model_matrix);
 }
 
-void setup_overlay(PONG_ELEMENT* overlay, float alpha, float stage_width, float stage_height)
+void setup_overlay(PONG_ELEMENT* pOverlay, float alpha, float stage_width, float stage_height)
 {
-    overlay->width = stage_width;
-    overlay->height = stage_height;
+	pOverlay->width = stage_width;
+	pOverlay->height = stage_height;
 
-    overlay->vertexType = GL_TRIANGLES;
+	pOverlay->vertexType = GL_TRIANGLES;
 
-    overlay->width2 = overlay->width / 2.0f;
-    overlay->height2 = overlay->height / 2.0f;
+	pOverlay->width2 = pOverlay->width / 2.0f;
+	pOverlay->height2 = pOverlay->height / 2.0f;
 
-    overlay->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
-    overlay->vertex_count = 4;
-    overlay->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
+	pOverlay->vertex = (float*)calloc(4 * VERTEX_SIZE, sizeof(float));
+	pOverlay->vertex_count = 4;
+	pOverlay->elements = (unsigned int*)malloc(sizeof(unsigned int) * 6);
 
-    overlay->elements_count = 6;
+	pOverlay->elements_count = 6;
 
-    assign_position_to_vertex(overlay->vertex, 0, -overlay->width2, -overlay->height2, 0.0f);
-    assign_color_to_vertex(overlay->vertex, 0, 0.0f, 0.0f, 0.0f, alpha);
+    assign_position_to_vertex(pOverlay->vertex, 0, -pOverlay->width2, -pOverlay->height2, 0.0f);
+    assign_color_to_vertex(pOverlay->vertex, 0, 0.0f, 0.0f, 0.0f, alpha);
 
-    assign_position_to_vertex(overlay->vertex, 1, -overlay->width2, overlay->height2, 0.0f);
-    assign_color_to_vertex(overlay->vertex, 1, 0.0f, 0.0f, 0.0f, alpha);
+    assign_position_to_vertex(pOverlay->vertex, 1, -pOverlay->width2, pOverlay->height2, 0.0f);
+    assign_color_to_vertex(pOverlay->vertex, 1, 0.0f, 0.0f, 0.0f, alpha);
 
-    assign_position_to_vertex(overlay->vertex, 2, overlay->width2, overlay->height2, 0.0f);
-    assign_color_to_vertex(overlay->vertex, 2, 0.0f, 0.0f, 0.0f, alpha);
+    assign_position_to_vertex(pOverlay->vertex, 2, pOverlay->width2, pOverlay->height2, 0.0f);
+    assign_color_to_vertex(pOverlay->vertex, 2, 0.0f, 0.0f, 0.0f, alpha);
 
-    assign_position_to_vertex(overlay->vertex, 3, overlay->width2, -overlay->height2, 0.0f);
-    assign_color_to_vertex(overlay->vertex, 3, 0.0f, 0.0f, 0.0f, alpha);
+    assign_position_to_vertex(pOverlay->vertex, 3, pOverlay->width2, -pOverlay->height2, 0.0f);
+    assign_color_to_vertex(pOverlay->vertex, 3, 0.0f, 0.0f, 0.0f, alpha);
 
-    overlay->elements[0] = 0;
-    overlay->elements[1] = 1;
-    overlay->elements[2] = 2;
-    overlay->elements[3] = 2;
-    overlay->elements[4] = 3;
-    overlay->elements[5] = 0;
+	pOverlay->elements[0] = 0;
+	pOverlay->elements[1] = 1;
+	pOverlay->elements[2] = 2;
+	pOverlay->elements[3] = 2;
+	pOverlay->elements[4] = 3;
+	pOverlay->elements[5] = 0;
 
-    load_identity_matrix(overlay->model_matrix);
-    overlay->model_matrix[14] = 0.0f;
+    load_identity_matrix(pOverlay->model_matrix);
+	pOverlay->model_matrix[14] = 0.0f;
 }
 
-void setup_stage(PONG_ELEMENT* stage,
+void setup_stage(PONG_ELEMENT* pStage,
     int window_width,
     int window_height,
     int blocks,
@@ -214,21 +214,21 @@ void setup_stage(PONG_ELEMENT* stage,
     int vertex = 0;
     float aspect = (float)window_width / window_height;
     float x_width, y_height;
-    stage->width = width;
-    stage->height = width / aspect;
-    stage->large = large * blocks;
-    stage->width2 = stage->width / 2.0f;
-    stage->height2 = stage->height / 2.0f;
+	pStage->width = width;
+	pStage->height = width / aspect;
+	pStage->large = large * blocks;
+	pStage->width2 = pStage->width / 2.0f;
+	pStage->height2 = pStage->height / 2.0f;
 
-    stage->vertexType = GL_QUADS;
+	pStage->vertexType = GL_QUADS;
 
-    x_width = stage->width2;
-    y_height = stage->height2;
+    x_width = pStage->width2;
+    y_height = pStage->height2;
 
-    stage->vertex_count = blocks * 16;
-    stage->elements_count = 0;
+	pStage->vertex_count = blocks * 16;
+	pStage->elements_count = 0;
 
-    stage->vertex = (float*)calloc(VERTEX_SIZE * stage->vertex_count, sizeof(float));
+	pStage->vertex = (float*)calloc(VERTEX_SIZE * pStage->vertex_count, sizeof(float));
 
     // first create temporal vertices for 3d box (4 vetices up and 4 vertices bottom)
     int tmp_vertex_count = blocks * 8;
@@ -266,23 +266,23 @@ void setup_stage(PONG_ELEMENT* stage,
         if (i > 0 && i % 4 == 0) {
             alpha /= 2.0f;
         }
-        cp_position_to_vertex(tmp_vertex, stage->vertex, triangle1[0], j);
-        assign_color_to_vertex(stage->vertex, j, color[0], color[1], color[2], alpha);
+        cp_position_to_vertex(tmp_vertex, pStage->vertex, triangle1[0], j);
+        assign_color_to_vertex(pStage->vertex, j, color[0], color[1], color[2], alpha);
 
-        cp_position_to_vertex(tmp_vertex, stage->vertex, triangle1[1], j + 1);
-        assign_color_to_vertex(stage->vertex, j + 1, color[0], color[1], color[2], alpha);
+        cp_position_to_vertex(tmp_vertex, pStage->vertex, triangle1[1], j + 1);
+        assign_color_to_vertex(pStage->vertex, j + 1, color[0], color[1], color[2], alpha);
 
-        cp_position_to_vertex(tmp_vertex, stage->vertex, triangle1[2], j + 2);
-        assign_color_to_vertex(stage->vertex, j + 2, color[0], color[1], color[2], alpha);
+        cp_position_to_vertex(tmp_vertex, pStage->vertex, triangle1[2], j + 2);
+        assign_color_to_vertex(pStage->vertex, j + 2, color[0], color[1], color[2], alpha);
 
-        cp_position_to_vertex(tmp_vertex, stage->vertex, triangle2[2], j + 3);
-        assign_color_to_vertex(stage->vertex, j + 3, color[0], color[1], color[2], alpha);
+        cp_position_to_vertex(tmp_vertex, pStage->vertex, triangle2[2], j + 3);
+        assign_color_to_vertex(pStage->vertex, j + 3, color[0], color[1], color[2], alpha);
     }
     free(tmp_vertex);
-    load_identity_matrix(stage->model_matrix);
+    load_identity_matrix(pStage->model_matrix);
 }
 
-void setup_ball(PONG_ELEMENT* ball, int segments, float radius, const float* color)
+void setup_ball(PONG_ELEMENT* pBall, int segments, float radius, const float* color)
 {
     float theta;
     float phi;
@@ -292,37 +292,37 @@ void setup_ball(PONG_ELEMENT* ball, int segments, float radius, const float* col
     int triangle2[3];
     float unit_angle = P_2PI / segments;
 
-    ball->vertexType = GL_TRIANGLES;
-    ball->width = radius;
+	pBall->vertexType = GL_TRIANGLES;
+	pBall->width = radius;
 
-    ball->vertex_count = segments * segments;
-    ball->elements_count = (ball->vertex_count * 6);
+	pBall->vertex_count = segments * segments;
+	pBall->elements_count = (pBall->vertex_count * 6);
 
-    ball->vertex = (float*)calloc(VERTEX_SIZE * ball->vertex_count, sizeof(float));
-    ball->elements = (unsigned int*)calloc(ball->elements_count, sizeof(unsigned int));
+	pBall->vertex = (float*)calloc(VERTEX_SIZE * pBall->vertex_count, sizeof(float));
+	pBall->elements = (unsigned int*)calloc(pBall->elements_count, sizeof(unsigned int));
 
     for (p = 0, theta = (float)-M_PI_2; p < segments; p++, theta += unit_angle) {
         for (m = 0, phi = 0.0f; m < segments; m++, phi += unit_angle) {
             assign_position_to_vertex(
-                ball->vertex, vertex,
-                cos(theta) * sin(phi) * ball->width,
-                sin(theta) * ball->width,
-                cos(theta) * cos(phi) * ball->width);
-            assign_color_to_vertex(ball->vertex, vertex, color[0], color[1], color[2], color[3]);
+				pBall->vertex, vertex,
+                cosf(theta) * sinf(phi) * pBall->width,
+                sinf(theta) * pBall->width,
+                cosf(theta) * cosf(phi) * pBall->width);
+            assign_color_to_vertex(pBall->vertex, vertex, color[0], color[1], color[2], color[3]);
             vertex++;
         }
     }
-    for (int i = 0, j = 0; i < (ball->vertex_count - segments); i++, j += 6) {
+    for (int i = 0, j = 0; i < (pBall->vertex_count - segments); i++, j += 6) {
         emit_mesh_triangle_pair(i, segments, triangle1, triangle2);
-        ball->elements[j] = triangle1[0];
-        ball->elements[j + 1] = triangle1[1];
-        ball->elements[j + 2] = triangle1[2];
-        ball->elements[j + 3] = triangle2[0];
-        ball->elements[j + 4] = triangle2[1];
-        ball->elements[j + 5] = triangle2[2];
+		pBall->elements[j] = triangle1[0];
+		pBall->elements[j + 1] = triangle1[1];
+		pBall->elements[j + 2] = triangle1[2];
+		pBall->elements[j + 3] = triangle2[0];
+		pBall->elements[j + 4] = triangle2[1];
+		pBall->elements[j + 5] = triangle2[2];
     }
 
-    load_identity_matrix(ball->model_matrix);
+    load_identity_matrix(pBall->model_matrix);
 }
 
 void build_circle(PONG_ELEMENT* element, float radius, int segments, const float* color)
@@ -341,7 +341,7 @@ void build_circle(PONG_ELEMENT* element, float radius, int segments, const float
     assign_color_to_vertex(element->vertex, 0, color[0], color[1], color[2], color[3]);
 
     for (p = 0, theta = 0; p < element->vertex_count - 1; p++, theta -= unit_angle) {
-        assign_position_to_vertex(element->vertex, vertex, cos(theta) * element->width, sin(theta) * element->width, 0);
+        assign_position_to_vertex(element->vertex, vertex, cosf(theta) * element->width, sinf(theta) * element->width, 0);
         assign_color_to_vertex(element->vertex, vertex, color[0], color[1], color[2], color[3]);
         vertex++;
     }

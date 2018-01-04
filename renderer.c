@@ -151,7 +151,7 @@ void remove_to_renderer(PONG_ELEMENT* element)
     glDeleteVertexArrays(1, &element->vao);
 }
 
-GLuint build_shader(GLenum type, const GLchar* source, GLint* result, GLchar* errormsg)
+GLuint build_shader(GLenum type, const GLchar* source, GLint* result, GLchar* pErrormsg)
 {
     GLuint id = glCreateShader(type);
     glShaderSource(id, 1, &source, NULL);
@@ -164,20 +164,20 @@ GLuint build_shader(GLenum type, const GLchar* source, GLint* result, GLchar* er
             int maxLength;
             glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
             glGetShaderInfoLog(id,
-                (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
+                (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, pErrormsg);
         }
-        return -1;
+        return 0;
     } else {
         *result = 0;
     }
     return id;
 }
 
-GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...)
+GLuint build_shaders_program(int count, int* result, GLchar* pErrormsg, ...)
 {
     va_list ap;
     GLuint program_id = glCreateProgram();
-    va_start(ap, errormsg);
+    va_start(ap, pErrormsg);
     for (int j = 0; j < count; j++) {
         GLuint shader = va_arg(ap, GLuint);
         glAttachShader(program_id, shader);
@@ -192,7 +192,7 @@ GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...)
             int maxLength;
             glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &maxLength);
             glGetProgramInfoLog(program_id,
-                (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, errormsg);
+                (maxLength > ERRORMSG_MAX_LENGTH ? ERRORMSG_MAX_LENGTH : maxLength), &maxLength, pErrormsg);
         }
     } else {
         *result = 0;
@@ -202,10 +202,9 @@ GLuint build_shaders_program(int count, int* result, GLchar* errormsg, ...)
 
 int init_renderer(int width, int height)
 {
-
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-        fprintf(stderr, "OpenGL error: %s\n", glewGetErrorString(err));
+		log_error("OpenGL error: %s\n", glewGetErrorString(err));
         return -1;
     }
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -220,22 +219,24 @@ int init_renderer(int width, int height)
     int result;
     vertex_shader = build_shader(GL_VERTEX_SHADER, vertex_shader_source, &result, errormsg);
     if (result != 0) {
-        fprintf(stderr, "Compile vertex shader failed: %s\n", errormsg);
+		log_error("Compile vertex shader failed: %s\n", errormsg);
         return -1;
     }
     vertex_shader_created = 1;
 
     fragment_shader = build_shader(GL_FRAGMENT_SHADER, fragment_shader_source, &result, errormsg);
     if (result != 0) {
-        fprintf(stderr, "Compile fragment shader failed: %s\n", errormsg);
+		log_error("Compile fragment shader failed: %s\n", errormsg);
         return -1;
     }
     fragment_shader_created = 1;
     program = build_shaders_program(2, &result, errormsg, vertex_shader, fragment_shader);
     if (result != 0) {
-        fprintf(stderr, "Links shaders program failed: %s\n", errormsg);
+		log_error("Links shaders program failed: %s\n", errormsg);
         return -1;
     }
+
+	
     program_created = 1;
 
     load_identity_matrix(view_matrix);

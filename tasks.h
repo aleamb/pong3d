@@ -10,11 +10,11 @@
 
 #include "msys.h"
 
-int start_screen_task(int);
-int loading_players_task(int, int, int);
+int start_screen_task();
+int loading_players_task(int);
 int player_service_task(int, int, SysEvent*);
-int opponent_service_task(int);
-int playing_task(int, int);
+int opponent_service_task();
+int playing_task(int);
 int opponent_wins_task(int);
 int player_wins_task(int);
 int finished_task(int);

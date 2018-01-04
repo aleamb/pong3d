@@ -8,6 +8,9 @@
 #include "msys.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
+#ifdef _WINDOWS
+#include <windows.h>
+#endif
 
 SDL_Window* window;
 SDL_GLContext mainContext;
@@ -20,11 +23,13 @@ int sound_initialized = 0;
 
 static void format_event(SDL_Event* event, SysEvent* sysEvent);
 
+static char error_str[128];
+
 int sys_init_video(int width, int height)
 {
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        fprintf(stderr, "Video initialization failed: %s\n", SDL_GetError());
+        log_error("Video initialization failed: %s\n", SDL_GetError());
         return -1;
     }
     window = SDL_CreateWindow("Pong 3D",
@@ -32,7 +37,7 @@ int sys_init_video(int width, int height)
         width, height, SDL_WINDOW_OPENGL);
 
     if (!window) {
-        fprintf(stderr, "Window set failed: %s\n", SDL_GetError());
+		log_error("Window set failed: %s\n", SDL_GetError());
         return -1;
     }
 
@@ -40,7 +45,7 @@ int sys_init_video(int width, int height)
     mainContext = SDL_GL_CreateContext(window);
 
     if (!mainContext) {
-        fprintf(stderr, "GL context creation failed: %s\n", SDL_GetError());
+		log_error("GL context creation failed: %s\n", SDL_GetError());
         return -1;
     }
     gl_initialized = 1;
@@ -55,7 +60,7 @@ int sys_init_video(int width, int height)
 int sys_init_sound(int sample_freq)
 {
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-        fprintf(stderr, "Sound initialization failed: %s\n", SDL_GetError());
+		log_error("Sound initialization failed: %s\n", SDL_GetError());
         return -1;
     }
 
@@ -67,11 +72,11 @@ int sys_init_sound(int sample_freq)
 
     dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (dev == 0) {
-        fprintf(stderr, "Failed opening audio device: %s\n", SDL_GetError());
+		log_error("Failed opening audio device: %s\n", SDL_GetError());
         return -1;
     } else if (have.format != want.format) {
         SDL_CloseAudioDevice(dev);
-        fprintf(stderr, "Failed getting sample format (AUDIO_F32SYS)\n");
+		log_error("Failed getting sample format (AUDIO_F32SYS)\n");
         return -1;
     }
     sound_initialized = 1;
@@ -102,7 +107,7 @@ void sys_dispose_audio()
     }
 }
 
-void sys_quit(int errolevel)
+void sys_quit()
 {
     SDL_Quit();
 }
@@ -162,4 +167,19 @@ static void format_event(SDL_Event* event, SysEvent* sysEvent)
     }
     sysEvent->x = event->motion.x;
     sysEvent->y = event->motion.y;
+}
+
+void log_error(char* format, ...)
+{
+	va_list argptr;
+	va_start(argptr, format);
+	vsnprintf(error_str, sizeof(error_str), format, argptr);
+	va_end(argptr);
+
+#ifdef _WINDOWS
+	//OutputDebugStringA(error_str);
+	MessageBoxA(0, error_str, "PONG3D", MB_ICONERROR | MB_OK);
+#else
+	fprintf(stderr, format);
+#endif
 }

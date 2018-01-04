@@ -17,6 +17,6 @@ void render_finish_screen(int player_score, int computer_score);
 void init_screens();
 void set_render();
 int need_render();
-void render(int);
+void render();
 
 #endif
