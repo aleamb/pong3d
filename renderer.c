@@ -72,7 +72,7 @@ precision highp float;\n \
  */
 
 const GLchar* fragment_shader_source = "#version 130\n \
-#extension GL_ARB_separate_shader_objects : warn\n \
+#extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
 precision highp float;\n \
 		layout(location = 5) in highp vec4 outColor;\n \
