@@ -180,6 +180,6 @@ void log_error(char* format, ...)
 	//OutputDebugStringA(error_str);
 	MessageBoxA(0, error_str, "PONG3D", MB_ICONERROR | MB_OK);
 #else
-	fprintf(stderr, format);
+	fprintf(stderr, "%s\n", error_str);
 #endif
 }
