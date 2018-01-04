@@ -42,8 +42,8 @@ bool equals(float a, float b)
 int start_screen_task(int elapsedFrames)
 {
     sys_show_cursor(1);
-    render(0);
-    change_state(STARTED);
+    set_render();
+    //change_state(STARTED);
 
     return 0;
 }
@@ -92,12 +92,14 @@ int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event)
         reset_opponent_stick_position();
         sys_mouse_center(WINDOW_WIDTH, WINDOW_HEIGHT);
         balls--;
-        render(0);
+        set_render();
         return 0;
     }
-    if (pendingEvent && event->type == MOUSELBUTTONUP && ball_in_player_stick()) {
-        change_state(PLAYER_RETURN);
-        play_player_pong_sound();
+    if (pendingEvent) {
+	if (event->type == MOUSELBUTTONUP && ball_in_player_stick()) {
+        	change_state(PLAYER_RETURN);
+        	play_player_pong_sound();
+	}
         return 0;
     }
     return 0;
@@ -213,7 +215,7 @@ int playing_task(int elapsedFrames, int pendingEvent)
     }
     // ball movement
     move_ball(ball.x + ball_speed_vector[0], ball.y + ball_speed_vector[1], ball.z + ball_speed_vector[2]);
-    render(0);
+    set_render();
     return resetFrames;
 }
 
@@ -223,7 +225,7 @@ int opponent_wins_task(int elapsedFrames)
     if (elapsedFrames == 0) {
         opponent_score++;
         play_opponent_wins_sound();
-        render(0);
+        set_render();
     } else if (elapsedFrames > 90) {
         if (balls)
             change_state(OPP_SERVICE);
@@ -240,7 +242,7 @@ int player_wins_task(int elapsedFrames)
     if (elapsedFrames == 0) {
         player_score++;
         play_player_wins_sound();
-        render(0);
+        set_render();
     } else if (elapsedFrames > 90) {
         if (balls)
             change_state(PLAYER_SERVICE);
@@ -302,7 +304,7 @@ int finished_task(int elapsedFrames)
 {
     if (elapsedFrames == 0) {
         sys_show_cursor(1);
-        render(0);
+        set_render();
     }
     return 0;
 }

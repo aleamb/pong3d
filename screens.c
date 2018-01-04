@@ -20,6 +20,8 @@ float player_text_score_coords[2];
 float computer_text_score_coords[2];
 char score_text[16];
 
+int mustRender = 0;
+
 void init_screens()
 {
     player_text_score_coords[0] = -stage.width / 2.0f + 0.1f;
@@ -78,6 +80,16 @@ void render_scores(int player_score, int computer_score)
     render_text(score_text, computer_text_score_coords[0], computer_text_score_coords[1], TEXT_SIZE_SCALE, FONT_SIZE);
 }
 
+void set_render()
+{
+    mustRender = 1;
+}
+
+int need_render()
+{
+    return mustRender;
+}
+
 void render(int elapsedFrames)
 {
     renderer_clear_screen();
@@ -106,4 +118,7 @@ void render(int elapsedFrames)
         break;
     }
     sys_swap_buffers();
+    mustRender = 0;
 }
+
+

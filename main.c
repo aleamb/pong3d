@@ -56,6 +56,8 @@ int main(int argc, char** argv)
     }
     create_elements(WINDOW_WIDTH, WINDOW_HEIGHT, STAGE_BLOCKS);
     init_screens();
+    // forces update screen
+    set_render();
     run_game();
     cleanup();
     return 0;
@@ -86,7 +88,7 @@ void run_game()
 
     int elapsedFrames = 0;
     unsigned int startTime, elapsedTime;
-    unsigned int period = (unsigned int)((1.0f / FPS) * 1000.0f);
+    unsigned int period = 1000.0 / FPS;
     int pendingEvent = 0;
     SysEvent event;
     bool firstLoop = true;
@@ -109,6 +111,9 @@ void run_game()
                 currentState = gameState;
             }
             reset_frames_counter = process_state(elapsedFrames, startTime - time_last_frame, period, pendingEvent, &event);
+	    if (need_render()) {
+		render(elapsedFrames);
+	    }
             elapsedFrames++;
 
             time_last_frame = sys_get_ticks();
@@ -175,7 +180,7 @@ int process_events_task(SysEvent* event, int elapsedFrames, int period)
         change_state(EXIT);
         break;
     case MOUSELBUTTONUP:
-        if (gameState == STARTED || gameState == FINISHED) {
+        if (gameState == STARTING || gameState == FINISHED) {
             change_state(LOADING_PLAYERS);
         } else if (gameState == PLAYER_SERVICE && ball_in_player_stick()) {
             play_player_pong_sound();
@@ -185,7 +190,9 @@ int process_events_task(SysEvent* event, int elapsedFrames, int period)
     case MOUSEMOTION:
         if (gameState == PLAYER_SERVICE || gameState == PLAYER_RETURN || gameState == OPP_RETURN) {
             mouse_move_player_stick(event->x, event->y);
-            render(0);
+	    if (gameState == PLAYER_SERVICE) {
+		set_render();
+	    }
         }
     }
     return 0;

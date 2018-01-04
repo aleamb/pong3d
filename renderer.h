@@ -24,4 +24,5 @@ void render_opponent_stick();
 void render_player_stick();
 void render_balls_counter(int);
 void render_shadows();
+
 #endif

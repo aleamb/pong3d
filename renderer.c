@@ -6,6 +6,7 @@
  */
 
 #include "renderer.h"
+#include "msys.h"
 #include <GL/glew.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -35,8 +36,9 @@ int program_created = 0;
 int vertex_shader_created = 0;
 int fragment_shader_created = 0;
 
-const GLchar* vertex_shader_source = "#version 330 core\n \
+const GLchar* vertex_shader_source = "#version 130\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
+#extension GL_ARB_explicit_attrib_location : require\n \
 precision highp float;\n \
 		layout(location = 0) in vec4 in_position;\n \
 		layout(location = 1) in vec4 in_color;\n \
@@ -69,8 +71,9 @@ precision highp float;\n \
   Inigo Quilez webpage (http://iquilezles.org/www/articles/distfunctions/distfunctions.htm) 
  */
 
-const GLchar* fragment_shader_source = "#version 330 core\n \
-#extension GL_ARB_separate_shader_objects : enable\n \
+const GLchar* fragment_shader_source = "#version 130\n \
+#extension GL_ARB_separate_shader_objects : warn\n \
+#extension GL_ARB_explicit_attrib_location : require\n \
 precision highp float;\n \
 		layout(location = 5) in highp vec4 outColor;\n \
 		layout(location = 6) in highp vec2 outUV;\n \
@@ -431,3 +434,4 @@ void render_player_stick()
     render_pong_element(&player_stick);
     glUniform1i(renderStickUniform, 0);
 }
+
