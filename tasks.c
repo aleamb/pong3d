@@ -77,6 +77,7 @@ int loading_players_task(int elapsedFrames, int time_delta, int period)
 static void set_initial_ball_velocity()
 {
     srand(time(NULL));
+    // 4 is a magic number
     ball_speed_vector[0] = ((rand() % 1) ? 1.0f : -1.0f) * stage.width / (FPS * (4 + rand() % 1));
     ball_speed_vector[1] = ((rand() % 1) ? 1.0f : -1.0f) * stage.height / (FPS * (4 + rand() % 1));
     ball_speed_vector[2] = -stage.large / (FPS - (ball_decrement * ball_frames_dec_factor));

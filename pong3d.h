@@ -41,7 +41,7 @@
 
 #define STAGE_COLOR { 0.0f, 1.0f, 0.0f, 0.2f };
 
-#define FPS 40
+#define FPS 60
 
 #define BALLS 12
 /**
@@ -53,7 +53,7 @@
 /**
   initial frame rate where ball movement is updated
  */
-#define INITIAL_BALL_VELOCITY_DECREMENT 15
+#define INITIAL_BALL_VELOCITY_DECREMENT 25
 
 #define FONT_SIZE 48
 
