@@ -1,6 +1,6 @@
 # Pong3D
 
-Pong game in three dimensions write in C using SDL2 and OpenGL 4, recreation of the pong 3d game by Liquid Media (www.liquid.se/pong).
+Pong game in three dimensions write in C using SDL2 and OpenGL 3, recreation of the pong 3d game by Liquid Media (www.liquid.se/pong).
 
 ![Pong3D](screenshot.png)
 
@@ -11,7 +11,7 @@ This program depends on:
 * SDL2 lib
 * Freetype2 lib
 * Glew
-* OpenGL libraries (core 4.0)
+* OpenGL libraries (3.2)
 
 
 ### Build on Unix/Linux systems
@@ -21,7 +21,7 @@ This program depends on:
 By example, in Debian based systems:
 
 ```
-sudo apt-get install libsdl2-dev libglew-dev libfreetype6-dev
+# apt-get install libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
 * Building
@@ -37,3 +37,5 @@ make
 ## License
 
 Pong3d is licensed under the MIT license. (http://opensource.org/licenses/MIT)
+
+
