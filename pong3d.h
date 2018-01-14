@@ -45,7 +45,7 @@
 
 #define BALLS 12
 /**
-  each time that player return a ball, ball velocity is increased reducing number of frames where ball movement is updated.
+  each time that player return a ball, ball speed is increased reducing number of frames where ball movement is updated.
  */
 
 #define FRAMES_DEC_FACTOR 1
