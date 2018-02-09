@@ -453,7 +453,9 @@ void free_pong_element(PONG_ELEMENT* element)
     if (element->elements_count > 0 && element->elements) {
         free(element->elements);
     }
-    remove_to_renderer(element);
+    if (element->uploaded) {
+    	remove_to_renderer(element);
+    }
 }
 
 void dispose_elements()

@@ -24,6 +24,7 @@ FT_Library ft;
 FT_Face face;
 
 int freetype_initialized = 0;
+int arrays_initialized = 0;
 
 static float text_model_matrix[16];
 static GLuint vao, vbo;
@@ -102,18 +103,18 @@ int init_text_renderer()
 		log_error("Could not open font\n");
         return -1;
     }
-
     FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
+
     GLuint program = renderer_get_main_program();
     glUniform1i(glGetUniformLocation(program, "tex"), 0);
     renderTextUniform = glGetUniformLocation(program, "renderText");
     modelMatrixUniform = glGetUniformLocation(program, "modelMatrix");
-    // generate start screen text
     load_identity_matrix(text_model_matrix);
-
+    
     glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
 
+    glGenBuffers(1, &vbo);
+    
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 6, 0);
@@ -121,9 +122,9 @@ int init_text_renderer()
     glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (char*)NULL + (sizeof(float) * 4));
     glEnableVertexAttribArray(3);
     glActiveTexture(GL_TEXTURE0);
-
     glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_STATIC_DRAW);
     glBindVertexArray(0);
+    arrays_initialized = 1;
     return 0;
 }
 
@@ -131,11 +132,13 @@ void dispose_text_renderer()
 {
     if (freetype_initialized) {
         FT_Done_FreeType(ft);
+    }
+    if (arrays_initialized) {
         glDeleteVertexArrays(1, &vao);
         glDeleteBuffers(1, &vbo);
-        for (int i = 0; i < NUM_LETTERS; i++) {
-            if (textures[i])
-                glDeleteTextures(1, &textures[i]);
-        }
+    }
+    for (int i = 0; i < NUM_LETTERS; i++) {
+      if (textures[i])
+         glDeleteTextures(1, &textures[i]);
     }
 }

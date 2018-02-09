@@ -46,6 +46,7 @@ typedef struct {
     float large2;
     /** model matrix to apply tranformations */
     float model_matrix[16];
+    int uploaded;
 } PONG_ELEMENT;
 
 extern PONG_ELEMENT player_stick;

@@ -117,6 +117,8 @@ void renderer_clear_screen()
 
 void upload_to_renderer(PONG_ELEMENT* element)
 {
+
+    element->uploaded = 0;
     glGenVertexArrays(1, &element->vao);
     glBindVertexArray(element->vao);
 
@@ -140,6 +142,7 @@ void upload_to_renderer(PONG_ELEMENT* element)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, element->elements_count * sizeof(unsigned int), element->elements, GL_STATIC_DRAW);
     }
     glBindVertexArray(0);
+    element->uploaded = 1;
 }
 
 void remove_to_renderer(PONG_ELEMENT* element)
@@ -204,8 +207,15 @@ int init_renderer(int width, int height)
 {
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-		log_error("OpenGL error: %s\n", glewGetErrorString(err));
+        log_error("OpenGL error: %s\n", glewGetErrorString(err));
         return -1;
+    }
+
+    puts((const char*)glGetString(GL_VERSION));
+    
+    if (!glewGetExtension("GL_ARB_explicit_attrib_location")) {
+	log_error("OpenGL error. No GL_ARB_explicit_attrib_location");
+	return -1;	
     }
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_BLEND);
