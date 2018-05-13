@@ -36,7 +36,7 @@ make
 
 ### Build on Windows with [MSYS2](https://www.msys2.org/)
 
-1. Open msys2 terminal. Make sure you have build tools installed (bmingw64, binutils)
+1. Open msys2 terminal. Make sure you have build tools installed (mingw64, binutils)
 
 2. Install dependencies SDL2, Glew, Freetype2
 
