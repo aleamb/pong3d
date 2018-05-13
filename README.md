@@ -16,7 +16,7 @@ This program depends on:
 
 ### Build on Unix/Linux systems
 
-* Install dependencies SDL2, Freetype2, Glew and OpenGL 4 using your favorite package manager.
+1. Install dependencies SDL2, Freetype2, Glew and OpenGL 4 using your favorite package manager.
 
 By example, in Debian based systems:
 
@@ -24,14 +24,30 @@ By example, in Debian based systems:
 # apt-get install libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
-* Building
+2. Build
 ```
 make
 ```
 
-* Run with
+3. Run with
 ```
 ./pong3d
+```
+
+### Build on Windows with [MSYS2](https://www.msys2.org/)
+
+1. Open msys2 terminal. Make sure you have build tools installed (bmingw64, binutils)
+
+2. Install dependencies SDL2, Glew, Freetype2
+
+```
+# pacman -S mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-glew mingw64/mingw-w64-x86_64-freetype
+```
+
+3. Build
+
+```
+# make -f Makefile.mingw
 ```
 
 ## License
