@@ -14,6 +14,7 @@
 #include "msys.h"
 #include <ft2build.h>
 #include <stdio.h>
+#include <string.h>
 #include FT_FREETYPE_H
 
 #define NUM_LETTERS 96
@@ -51,6 +52,8 @@ void render_text(const char* text, float x, float y, float scale)
 
     glUniform1i(renderTextUniform, 1);
 
+    glActiveTexture(GL_TEXTURE1);
+
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
@@ -59,6 +62,7 @@ void render_text(const char* text, float x, float y, float scale)
         if (!textures[index]) {
             if (FT_Load_Char(face, *p, FT_LOAD_RENDER))
                 continue;
+
             FT_GlyphSlot g = face->glyph;
 
             glGenTextures(1, &textures[index]);
@@ -80,6 +84,7 @@ void render_text(const char* text, float x, float y, float scale)
                 GL_RED,
                 GL_UNSIGNED_BYTE,
                 g->bitmap.buffer);
+            
         } else {
             glBindTexture(GL_TEXTURE_2D, textures[index]);
         }
@@ -87,6 +92,7 @@ void render_text(const char* text, float x, float y, float scale)
 
         text_model_matrix[12] += scale;
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
     glBindVertexArray(0);
     glUniform1i(renderTextUniform, 0);
@@ -103,10 +109,12 @@ int init_text_renderer()
 		log_error("Could not open font\n");
         return -1;
     }
+    memset(textures, 0, NUM_LETTERS);
     FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
 
     GLuint program = renderer_get_main_program();
-    glUniform1i(glGetUniformLocation(program, "tex"), 0);
+    glUniform1i(glGetUniformLocation(program, "tex"), 1);
+
     renderTextUniform = glGetUniformLocation(program, "renderText");
     modelMatrixUniform = glGetUniformLocation(program, "modelMatrix");
     load_identity_matrix(text_model_matrix);
@@ -121,7 +129,7 @@ int init_text_renderer()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (char*)NULL + (sizeof(float) * 4));
     glEnableVertexAttribArray(3);
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE1);
     glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_STATIC_DRAW);
     glBindVertexArray(0);
     arrays_initialized = 1;
