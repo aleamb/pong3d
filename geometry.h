@@ -8,6 +8,10 @@
 #ifndef _MESH_H_
 #define _MESH_H_
 
+#ifdef _WINDOWS
+#include <windows.h>
+#endif
+
 #include <GL/glew.h>
 
 #define P_2PI 6.283185307f
