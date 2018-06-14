@@ -43,12 +43,30 @@ make
 ```
 pacman -S mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-glew mingw64/mingw-w64-x86_64-freetype
 ```
-
-3. Build
+3. make sure that gcc points to /mingw64/bin/gcc with
 
 ```
-make -f Makefile.mingw
+which gcc
 ```
+
+If not, install mingw-64
+
+```
+pacman -S mingw-w64-x86_64-gcc
+```
+
+4. Build
+
+```
+make -f Makefile.msys2
+```
+
+5. Run in msys2 terminal with
+
+```
+./pong3d.exe
+```
+
 
 ## License
 
