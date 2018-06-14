@@ -41,13 +41,13 @@ make
 2. Install dependencies SDL2, Glew, Freetype2
 
 ```
-# pacman -S mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-glew mingw64/mingw-w64-x86_64-freetype
+pacman -S mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-glew mingw64/mingw-w64-x86_64-freetype
 ```
 
 3. Build
 
 ```
-# make -f Makefile.mingw
+make -f Makefile.mingw
 ```
 
 ## License
