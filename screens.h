@@ -15,8 +15,8 @@ void render_opp_wins_screen();
 void render_start_screen();
 void render_finish_screen(int player_score, int computer_score);
 void init_screens();
-void set_render();
-int need_render();
 void render();
+void loading_players_screen_set_overlay(float overlay);
+void render_loading_players_screen();
 
 #endif

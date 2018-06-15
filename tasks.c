@@ -41,10 +41,6 @@ bool equals(float a, float b)
 
 int start_screen_task()
 {
-    sys_show_cursor(1);
-    set_render();
-    //change_state(STARTED);
-
     return 0;
 }
 
@@ -55,14 +51,11 @@ int loading_players_task(int elapsedFrames)
         overlay_fadeout_frames = (int)(FPS * 0.3f);
         overlay_fadeout = OVERLAY_ALPHA / overlay_fadeout_frames;
         overlay_fadeout_alpha = overlay_fadeout;
+        loading_players_screen_set_overlay(overlay_fadeout_alpha);
     }
     if (elapsedFrames <= overlay_fadeout_frames) {
-        renderer_clear_screen();
-        render_stage();
-        render_fadeout_overlay(overlay_fadeout_alpha);
-        sys_swap_buffers();
         overlay_fadeout_alpha += overlay_fadeout;
-
+        loading_players_screen_set_overlay(overlay_fadeout_alpha);
     } else {
         play_start_sound();
         sys_show_cursor(0);
@@ -93,15 +86,14 @@ int player_service_task(int elapsedFrames, int pendingEvent, SysEvent* event)
         reset_opponent_stick_position();
         sys_mouse_center(WINDOW_WIDTH, WINDOW_HEIGHT);
         balls--;
-        set_render();
         return 0;
     }
-    if (pendingEvent) {
-	if (event->type == MOUSELBUTTONUP && ball_in_player_stick()) {
+    if (1) {
+	    if (event->type == MOUSELBUTTONUP && ball_in_player_stick()) {
         	change_state(PLAYER_RETURN);
         	play_player_pong_sound();
-	}
-        return 0;
+	    }
+      return 0;
     }
     return 0;
 }
@@ -216,7 +208,6 @@ int playing_task(int elapsedFrames)
     }
     // ball movement
     move_ball(ball.x + ball_speed_vector[0], ball.y + ball_speed_vector[1], ball.z + ball_speed_vector[2]);
-    set_render();
     return resetFrames;
 }
 
@@ -226,7 +217,6 @@ int opponent_wins_task(int elapsedFrames)
     if (elapsedFrames == 0) {
         opponent_score++;
         play_opponent_wins_sound();
-        set_render();
     } else if (elapsedFrames > 90) {
         if (balls)
             change_state(OPP_SERVICE);
@@ -243,7 +233,6 @@ int player_wins_task(int elapsedFrames)
     if (elapsedFrames == 0) {
         player_score++;
         play_player_wins_sound();
-        set_render();
     } else if (elapsedFrames > 90) {
         if (balls)
             change_state(PLAYER_SERVICE);
@@ -298,6 +287,7 @@ int opponent_service_task()
     move_ball(0, 0, opponent_stick.z + ball.width);
     change_state(OPP_RETURN);
     balls--;
+    sys_show_cursor(0);
     return 0;
 }
 
@@ -305,7 +295,6 @@ int finished_task(int elapsedFrames)
 {
     if (elapsedFrames == 0) {
         sys_show_cursor(1);
-        set_render();
     }
     return 0;
 }

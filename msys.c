@@ -72,11 +72,11 @@ int sys_init_sound(int sample_freq)
 
     dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (dev == 0) {
-		log_error("Failed opening audio device: %s\n", SDL_GetError());
+		    log_error("Failed opening audio device: %s\n", SDL_GetError());
         return -1;
     } else if (have.format != want.format) {
         SDL_CloseAudioDevice(dev);
-		log_error("Failed getting sample format (AUDIO_F32SYS)\n");
+		    log_error("Failed getting sample format (AUDIO_F32SYS)\n");
         return -1;
     }
     sound_initialized = 1;
@@ -121,12 +121,10 @@ int sys_wait(SysEvent* sysEvent, unsigned int milis)
 {
     int hasEvent = 0;
     SDL_Event event;
+    SDL_Delay(milis);
     if (SDL_PollEvent(&event)) {
-        format_event(&event, sysEvent);
-        hasEvent = 1;
-    } else if (SDL_WaitEventTimeout(&event, milis)) {
-        format_event(&event, sysEvent);
-        hasEvent = 1;
+      format_event(&event, sysEvent);
+      hasEvent = 1;
     }
     return hasEvent;
 }
@@ -143,6 +141,8 @@ void sys_mouse_center(int width, int height)
 void sys_show_cursor(int show)
 {
     SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
+    printf("cursor\n");
+    fflush(stdout);
 }
 
 static void format_event(SDL_Event* event, SysEvent* sysEvent)
@@ -169,6 +169,10 @@ static void format_event(SDL_Event* event, SysEvent* sysEvent)
     sysEvent->y = event->motion.y;
 }
 
+void sys_mouse_position(int* x, int* y) {
+
+  SDL_GetMouseState(x, y);
+}
 void log_error(char* format, ...)
 {
 	va_list argptr;

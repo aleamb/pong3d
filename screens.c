@@ -20,7 +20,7 @@ float player_text_score_coords[2];
 float computer_text_score_coords[2];
 char score_text[16];
 
-int mustRender = 0;
+float overlay_alpha = 1.0;
 
 void init_screens()
 {
@@ -80,14 +80,14 @@ void render_scores(int pPlayer_score, int computer_score)
     render_text(score_text, computer_text_score_coords[0], computer_text_score_coords[1], TEXT_SIZE_SCALE);
 }
 
-void set_render()
-{
-    mustRender = 1;
+void loading_players_screen_set_overlay(float pOverlay) {
+  overlay_alpha = pOverlay; 
 }
 
-int need_render()
-{
-    return mustRender;
+void render_loading_players_screen() {
+  renderer_clear_screen();
+  render_stage();
+  render_fadeout_overlay(overlay_alpha);
 }
 
 void render()
@@ -114,11 +114,12 @@ void render()
     case OPP_SERVICE:
     case STARTED:
     case LOADING_PLAYERS:
+      render_loading_players_screen();
+      break;
     case EXIT:
-        break;
+      break;
     }
     sys_swap_buffers();
-    mustRender = 0;
 }
 
 

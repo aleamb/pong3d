@@ -57,8 +57,6 @@ int main(int argc, char** argv)
     }
     create_elements(WINDOW_WIDTH, WINDOW_HEIGHT, STAGE_BLOCKS);
     init_screens();
-    // forces update screen
-    set_render();
     run_game();
     cleanup();
     return 0;
@@ -87,12 +85,11 @@ void init_game()
 void run_game()
 {
 
-    int elapsedFrames = 0;
+    int framesElapsed = 0;
     unsigned int startTime, elapsedTime;
     unsigned int period = (unsigned int)(1000.0 / FPS);
     int pendingEvent = 0;
     SysEvent event;
-    bool firstLoop = true;
     int reset_frames_counter = 0;
     int wait_time = 0;
     int time_last_frame = startTime = sys_get_ticks();
@@ -104,36 +101,26 @@ void run_game()
     while (gameState != EXIT) {
         startTime = sys_get_ticks();
         if (pendingEvent) {
-            process_events_task(&event);
+          process_events_task(&event);
         }
-        if (firstLoop || (startTime - time_last_frame) >= period) {
-            if (currentState != gameState || reset_frames_counter) {
-                elapsedFrames = 0;
-                currentState = gameState;
-            }
-            reset_frames_counter = process_state(elapsedFrames, pendingEvent, &event);
-	    if (need_render()) {
-		render(elapsedFrames);
-	    }
-            elapsedFrames++;
-
-            time_last_frame = sys_get_ticks();
-
-            elapsedTime = time_last_frame - startTime;
-            wait_time = period - elapsedTime;
-            firstLoop = false;
-        } else {
-            wait_time -= (sys_get_ticks() - startTime);
+        if (currentState != gameState || reset_frames_counter) {
+          framesElapsed = 0;
+          currentState = gameState;
         }
+        reset_frames_counter = process_state(framesElapsed, pendingEvent, &event);
+        render();
+        framesElapsed++;
+
+        time_last_frame = sys_get_ticks();
+
+        elapsedTime = time_last_frame - startTime;
+        wait_time = period - elapsedTime;
         if (wait_time < 0) {
             wait_time = 0;
         }
-        /*
-          When ocurrs a event (like a mouse motion) waiting is interrupted, event processed and then
-          current state is rendered. Next, the loop waits again with the
-          updated time (prior time minus event processing time)
-		    */
         pendingEvent = sys_wait(&event, wait_time);
+      
+     
     }
 }
 
@@ -152,6 +139,7 @@ int process_state(int elapsedFrames, int pendingEvent, SysEvent* event)
         reset_frames = player_service_task(elapsedFrames, pendingEvent, event);
         break;
     case PLAYER_RETURN:
+        break;
     case OPP_RETURN:
         reset_frames = playing_task(elapsedFrames);
         break;
@@ -163,10 +151,12 @@ int process_state(int elapsedFrames, int pendingEvent, SysEvent* event)
         break;
     case OPP_SERVICE:
         reset_frames = opponent_service_task(elapsedFrames);
+        break;
     case FINISHED:
         reset_frames = finished_task(elapsedFrames);
         break;
     case EXIT:
+        break;
     case STARTED:
         break;
     }
@@ -189,12 +179,7 @@ int process_events_task(SysEvent* event)
         }
         break;
     case MOUSEMOTION:
-        if (gameState == PLAYER_SERVICE || gameState == PLAYER_RETURN || gameState == OPP_RETURN) {
-            mouse_move_player_stick(event->x, event->y);
-	    if (gameState == PLAYER_SERVICE) {
-		set_render();
-	    }
-        }
+        break;
     }
     return 0;
 }

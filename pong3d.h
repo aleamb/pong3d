@@ -77,7 +77,6 @@ extern int player_score;
 extern int opponent_score;
 extern GAME_STATE gameState, prevGameState;
 
-void mouse_move_player_stick(int mx, int my);
 int ball_in_player_stick();
 int ball_in_opponent_stick();
 int ball_in_stick(float ball_x, float ball_y, float ball_width, PONG_ELEMENT* stick);

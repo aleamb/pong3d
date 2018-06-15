@@ -5,6 +5,7 @@
   @brief Rendering functions. Mainly wraps OpenGL calls. 
  */
 
+#include "pong3d.h"
 #include "renderer.h"
 #include "msys.h"
 #include <GL/glew.h>
@@ -441,6 +442,12 @@ void render_opponent_stick()
 }
 void render_player_stick()
 {
+    int mx, my;
+    sys_mouse_position(&mx, &my);
+    move_player_stick((mx - (WINDOW_WIDTH >> 1)) / (float)WINDOW_WIDTH,
+        //(aspect * h -> w/h * h -> h)
+        (my - (WINDOW_HEIGHT >> 1)) / -(float)WINDOW_WIDTH);
+
     glUniform1i(renderStickUniform, 1);
     render_pong_element(&player_stick);
     glUniform1i(renderStickUniform, 0);

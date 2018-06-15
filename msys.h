@@ -34,6 +34,7 @@ int sys_wait(SysEvent* event, unsigned int milis);
 void sys_swap_buffers();
 void sys_mouse_center(int width, int height);
 void sys_show_cursor(int show);
+void sys_mouse_position(int* x, int* y);
 
 void log_error(char* format, ...);
 
