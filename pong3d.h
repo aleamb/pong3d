@@ -50,11 +50,6 @@
 
 #define FRAMES_DEC_FACTOR 1
 
-/**
-  initial frame rate where ball movement is updated
- */
-#define INITIAL_BALL_VELOCITY_DECREMENT 25
-
 #define FONT_SIZE 48
 
 typedef enum {
