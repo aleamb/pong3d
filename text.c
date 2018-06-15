@@ -109,7 +109,7 @@ int init_text_renderer()
 		log_error("Could not open font\n");
         return -1;
     }
-    memset(textures, 0, NUM_LETTERS);
+    memset(textures, 0, NUM_LETTERS * sizeof(GLuint));
     FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
 
     GLuint program = renderer_get_main_program();

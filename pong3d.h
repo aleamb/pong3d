@@ -23,9 +23,8 @@
    and angle for each segment 2*PI / BALL_SEGMENTS
  */
 #define BALL_SEGMENTS 20
-/*
-   delay in frames to limit speed of computer stick
- */
+
+// delay in frames to limit speed of computer stick
 #define OPPONENT_SAMPLE_ADJUST 30
 
 // sample frecuency rate for sound synthetizer
@@ -34,12 +33,13 @@
 // alpha value for overlay
 #define OVERLAY_ALPHA 0.8f
 
-#define INITIAL_BALL_SPEED_VECTOR \
-    {                             \
-        -0.1f, 0.05f, -1.3f       \
-    }
+// by default, ball adquires a speed of (stage deep)/per second. This constant increments this speed.
 
-#define STAGE_COLOR { 0.0f, 1.0f, 0.0f, 0.2f };
+#define INITIAL_VELOCITY_FACTOR 1.3f
+
+#define INITIAL_BALL_SPEED_VECTOR { -0.1f, 0.05f, -0.0f }
+
+#define STAGE_COLOR { 0.0f, 1.0f, 0.0f, 0.2f }
 
 #define FPS 60
 

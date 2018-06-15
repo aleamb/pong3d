@@ -139,7 +139,6 @@ int process_state(int elapsedFrames, int pendingEvent, SysEvent* event)
         reset_frames = player_service_task(elapsedFrames, pendingEvent, event);
         break;
     case PLAYER_RETURN:
-        break;
     case OPP_RETURN:
         reset_frames = playing_task(elapsedFrames);
         break;

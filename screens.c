@@ -113,6 +113,7 @@ void render()
         break;
     case OPP_SERVICE:
     case STARTED:
+        break;
     case LOADING_PLAYERS:
       render_loading_players_screen();
       break;

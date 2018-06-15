@@ -212,7 +212,7 @@ int init_renderer(int width, int height)
         return -1;
     }
 
-    puts((const char*)glGetString(GL_VERSION));
+    //puts((const char*)glGetString(GL_VERSION));
     
     if (!glewGetExtension("GL_ARB_explicit_attrib_location")) {
 	log_error("OpenGL error. No GL_ARB_explicit_attrib_location");

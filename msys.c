@@ -141,8 +141,6 @@ void sys_mouse_center(int width, int height)
 void sys_show_cursor(int show)
 {
     SDL_ShowCursor(show ? SDL_TRUE : SDL_FALSE);
-    printf("cursor\n");
-    fflush(stdout);
 }
 
 static void format_event(SDL_Event* event, SysEvent* sysEvent)
@@ -170,9 +168,9 @@ static void format_event(SDL_Event* event, SysEvent* sysEvent)
 }
 
 void sys_mouse_position(int* x, int* y) {
-
   SDL_GetMouseState(x, y);
 }
+
 void log_error(char* format, ...)
 {
 	va_list argptr;
