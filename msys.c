@@ -6,7 +6,7 @@
  */
 
 #include "msys.h"
-#include <SDL2/SDL.h>
+#include "SDL.h"
 #include <stdio.h>
 #ifdef _WINDOWS
 #include <windows.h>
@@ -59,6 +59,12 @@ int sys_init_video(int width, int height)
 
 int sys_init_sound(int sample_freq)
 {
+
+#ifdef _WINDOWS
+    // avoid issue in SDL > 2.0.5 on Windows
+    SetEnvironmentVariable("SDL_AUDIODRIVER", "directsound");
+#endif
+
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
 		log_error("Sound initialization failed: %s\n", SDL_GetError());
         return -1;

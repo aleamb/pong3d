@@ -2,7 +2,7 @@
   @file geometry.h
   @author Alejandro Ambroa
   @date 1 Oct 2017
-  @brief Game objects for pong3d and utils functions for geometry tranformations. 
+  @brief Game objects for pong3d and utils functions for geometry tranformations.
  */
 
 #ifndef _MESH_H_

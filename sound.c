@@ -2,13 +2,13 @@
 	@file sound.c
 	@author Alejandro Ambroa
 	@date 1 Oct 2017
-	@brief Generation of game sounds. 
+	@brief Generation of game sounds.
 */
 
 #include "sound.h"
 #include "msys.h"
 #include "synth.h"
-#include <SDL2/SDL.h>
+#include "SDL.h"
 
 sample_t* player_pong_sound;
 int player_pong_sound_samples;
