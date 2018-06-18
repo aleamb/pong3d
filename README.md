@@ -38,9 +38,9 @@ make
 
 1. Download and install [Visual Studio 2017 Community](https://www.visualstudio.com/thank-you-downloading-visual-studio/?sku=Community&rel=15)
 2. Download and install [CMake for Windows](https://cmake.org/download/) CMake version must be >= 3.8
-3. Download SDL2 developement libraries for VC (SDL2-devel-2.X.X-VC.zip) and unzip at location on disk
-4. Download GLEW binaries and unzip at location on disk
-5. Download Freetype binaries for windows [here](https://github.com/ubawurinna/freetype-windows-binaries) Clone repo at location on disk
+3. Download SDL2 developement libraries for VC (SDL2-devel-2.X.X-VC.zip) and unzip at any location on disk
+4. Download GLEW binaries and unzip at any location on disk
+5. Download Freetype binaries for windows [here](https://github.com/ubawurinna/freetype-windows-binaries) Clone repo at any location on disk
 6. Open Windows Console Prompt
 7. Set environment variables with locations of libraries downloaded before.
 
@@ -49,7 +49,7 @@ set SDL2_DIR=<SDL2_lib location>
 set FREETYPE_DIR=<Fretype lib location>
 set GLEW_DIR=<glew lib location>
 ```
-8. Modifiy your system PATH environment variable adding each DLL directory for 64 bits. This is for execute program from Visual Studio without copy DLL's in project directory.
+8. Modifiy your system PATH environment variable adding each DLL directory for 64 bits. This is for execute program from Visual Studio without copy DLL files in project directory.
 9. Go to project source
 
 ```
@@ -115,5 +115,3 @@ make -f Makefile.msys2
 ## License
 
 Pong3d is licensed under the MIT license. (http://opensource.org/licenses/MIT)
-
-
