@@ -16,7 +16,7 @@ This program depends on:
 
 ### Build on Unix/Linux systems
 
-1. Install dependencies SDL2, Freetype2, Glew and OpenGL 4 using your favorite package manager.
+1. Install dependencies SDL2, Freetype2, Glew and OpenGL 4 using system package manager.
 
 By example, in Debian based systems:
 
@@ -25,14 +25,23 @@ By example, in Debian based systems:
 ```
 
 2. Build
+
 ```
 make
 ```
 
 3. Run with
+
 ```
 ./pong3d
 ```
+
+### Build on Windows with Visual Studio with NuGet
+
+1. Download and install [Visual Studio 2017 Community](https://www.visualstudio.com/thank-you-downloading-visual-studio/?sku=Community&rel=15) Make Sure that NuGet is selected when install.
+2. Open ${projectDir}\build\windows\vs2017\Pong3D.sln
+3. Select solution, open context menu and select Recompile.
+4. Execute.
 
 ### Build on Windows (64 bits) with Visual Studio and CMake
 
@@ -79,16 +88,19 @@ cmake .. -G "Visual Studio 15 2017 Win64"
 14. Modifiy your system PATH environment variable adding each DLL directory for 64 bits. This is for execute program from Visual Studio without copy DLL files in project directory; or copy DLLs to project folder.
 15. Now you can Execute or Debug project.
 
-### Build on Windows with [MSYS2](https://www.msys2.org/)
 
-1. Open msys2 terminal. Make sure you have build tools installed (mingw64, binutils)
+### Run on Windows with MSYS2
 
-2. Install dependencies SDL2, Glew, Freetype2
+1. Install [MSYS2](https://www.msys2.org/)
+
+2. Open msys2 terminal. Make sure you have build tools installed (mingw64, binutils)
+
+3. Install dependencies SDL2, Glew, Freetype2
 
 ```
 pacman -S mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-glew mingw64/mingw-w64-x86_64-freetype
 ```
-3. make sure that gcc points to /mingw64/bin/gcc with
+4. make sure that gcc points to /mingw64/bin/gcc with
 
 ```
 which gcc
@@ -100,13 +112,13 @@ If not, install mingw-64
 pacman -S mingw-w64-x86_64-gcc
 ```
 
-4. Build
+5. Build
 
 ```
 make -f Makefile.msys2
 ```
 
-5. Run in msys2 terminal with
+6. Run in msys2 terminal with
 
 ```
 ./pong3d.exe
