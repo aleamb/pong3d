@@ -47,7 +47,7 @@ in build directory.
 
 1. Download and install [Visual Studio 2017 Community](https://www.visualstudio.com/thank-you-downloading-visual-studio/?sku=Community&rel=15) Make Sure that NuGet is selected when install.
 2. Open ${projectDir}\build\windows\vs2017\Pong3D.sln
-3. Select solution, open context menu and select Recompile.
+3. Select solution, open context menu, retarget SDK Version if neccesary and select Recompile.
 4. Execute.
 
 ### Build on Windows (64 bits) with Visual Studio and CMake
