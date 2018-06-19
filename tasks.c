@@ -176,7 +176,10 @@ int playing_task(int elapsedFrames)
                 change_state(PLAYER_WINS);
             }
         } else {
-            // Computer IA. Look ball position each 4 frames and got to position with velocity
+            /* 
+             * Computer IA. 
+             * Look ball position each 4 frames and go to such position with a speed inversely proportional to distance to ball.
+            */
             if (elapsedFrames == 4) {
                 to_position[0] = ball.x - opponent_stick.x;
                 to_position[1] = ball.y - opponent_stick.y;
