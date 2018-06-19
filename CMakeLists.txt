@@ -49,11 +49,11 @@ if (WIN32)
     target_link_libraries(pong3d "${GLEW_DIR}/lib/Release/x64/glew32.lib")
     target_link_libraries(pong3d opengl32.lib)
 else()
-    target_link_libraries(pong3d ${SDL2_LIBRARIES})
+    target_link_libraries(pong3d SDL2)
     target_link_libraries(pong3d ${FREETYPE_LIBRARIES})
     target_link_libraries(pong3d GLEW)
     target_link_libraries(pong3d m)
     target_link_libraries(pong3d GL)
 endif()
 
-
+file(COPY fonts DESTINATION .)

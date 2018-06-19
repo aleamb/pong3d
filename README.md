@@ -16,18 +16,22 @@ This program depends on:
 
 ### Build on Unix/Linux systems
 
-1. Install dependencies SDL2, Freetype2, Glew and OpenGL 4 using system package manager.
+1. Install CMake and dependencies SDL2, Freetype2, Glew and OpenGL 4 using system package manager.
 
 By example, in Debian based systems:
 
 ```
-# apt-get install libsdl2-dev libglew-dev libfreetype6-dev
+# apt-get install cmake libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
 2. Build
 
 ```
-make
+cd build
+```
+
+```
+cmake ..
 ```
 
 3. Run with
@@ -35,6 +39,9 @@ make
 ```
 ./pong3d
 ```
+
+in build directory.
+
 
 ### Build on Windows with Visual Studio with NuGet
 
