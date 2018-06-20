@@ -127,7 +127,7 @@ int playing_task(int elapsedFrames)
             }
         }
         // if ball is in player Z coord...
-        if (equals(ball.z - ball.width, player_stick.z)) {
+        if (equals(ball.z - ball.width, player_stick.z) || ball.z > 0.0f) {
             if (ball_in_player_stick()) { // test if hits in player stick
                 play_player_pong_sound();
                 // invserse Z component of velocity
@@ -157,7 +157,7 @@ int playing_task(int elapsedFrames)
         resetFrames = 0;
     } else if (gameState == PLAYER_RETURN) { // player returns ball
 
-        if (equals(ball.z + ball.width, opponent_stick.z)) { // if ball is in Z coord of computer stick...
+        if (equals(ball.z + ball.width, opponent_stick.z) || ball.z < opponent_stick.z) { // if ball is in Z coord of computer stick...
 
             if (ball_in_opponent_stick()) {
                 play_opponent_pong_sound();
@@ -178,9 +178,9 @@ int playing_task(int elapsedFrames)
         } else {
             /* 
              * Computer IA. 
-             * Look ball position each 4 frames and go to such position with a speed inversely proportional to distance to ball.
+             * Look ball position each 8 frames and go to such position with a speed inversely proportional to distance to ball.
             */
-            if (elapsedFrames == 4) {
+            if (elapsedFrames == 8) {
                 to_position[0] = ball.x - opponent_stick.x;
                 to_position[1] = ball.y - opponent_stick.y;
                 framesToPosition = (int)fabs((opponent_stick.z - ball.z) / ball_speed_vector[2]);
