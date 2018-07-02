@@ -55,5 +55,5 @@ pong3d.exe
 pong3d.dir
 x64/
 Debug/
-
-
+.vs/
+packages/
