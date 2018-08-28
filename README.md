@@ -24,7 +24,7 @@ By example, in Debian based systems:
 # apt-get install cmake libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
-2. Build
+2. Prepare files to compile
 
 ```
 cd build
