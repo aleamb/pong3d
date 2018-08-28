@@ -34,7 +34,13 @@ cd build
 cmake ..
 ```
 
-3. Run with
+3. Compile
+
+```
+make all
+```
+
+4. Run with
 
 ```
 ./pong3d
