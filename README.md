@@ -24,7 +24,7 @@ By example, in Debian based systems:
 # apt-get install cmake libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
-2. Build
+2. Prepare files to compile
 
 ```
 cd build
@@ -34,7 +34,13 @@ cd build
 cmake ..
 ```
 
-3. Run with
+3. Compile
+
+```
+make all
+```
+
+4. Run with
 
 ```
 ./pong3d
