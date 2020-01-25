@@ -59,40 +59,41 @@ void render_text(const char* text, float x, float y, float scale)
 
     for (p = text; *p; p++) {
         int index = *p - 32;
-        if (!textures[index]) {
-            if (FT_Load_Char(face, *p, FT_LOAD_RENDER))
-                continue;
+        if (*p != ' ') {
+            if (!textures[index]) {
+                if (FT_Load_Char(face, *p, FT_LOAD_RENDER))
+                    continue;
 
-            FT_GlyphSlot g = face->glyph;
+                FT_GlyphSlot g = face->glyph;
 
-            glGenTextures(1, &textures[index]);
-            glBindTexture(GL_TEXTURE_2D, textures[index]);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+                glGenTextures(1, &textures[index]);
+                glBindTexture(GL_TEXTURE_2D, textures[index]);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-            glTexImage2D(
-                GL_TEXTURE_2D,
-                0,
-                GL_RED,
-                g->bitmap.width,
-                g->bitmap.rows,
-                0,
-                GL_RED,
-                GL_UNSIGNED_BYTE,
-                g->bitmap.buffer);
-            
-        } else {
-            glBindTexture(GL_TEXTURE_2D, textures[index]);
+                glTexImage2D(
+                    GL_TEXTURE_2D,
+                    0,
+                    GL_ALPHA,
+                    g->bitmap.width,
+                    g->bitmap.rows,
+                    0,
+                    GL_ALPHA,
+                    GL_UNSIGNED_BYTE,
+                    g->bitmap.buffer);
+
+            } else {
+                glBindTexture(GL_TEXTURE_2D, textures[index]);
+            }
+            glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, text_model_matrix);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
-        glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, text_model_matrix);
-
         text_model_matrix[12] += scale;
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glBindTexture(GL_TEXTURE_2D, 0);
     }
     glBindVertexArray(0);
     glUniform1i(renderTextUniform, 0);

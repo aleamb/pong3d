@@ -40,11 +40,10 @@ int fragment_shader_created = 0;
 const GLchar* vertex_shader_source = "#version 120\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
-precision highp float;\n \
 		layout(location = 0) in vec4 in_position;\n \
 		layout(location = 1) in vec4 in_color;\n \
 		layout(location = 2) in vec4 in_normal;\n \
-		layout(location = 3) in highp vec2 in_uv;\n \
+		layout(location = 3) in vec2 in_uv;\n \
 		layout(location = 4) in vec4 extra;\n \
 		uniform mat4 projectionMatrix;\n \
 		uniform mat4 viewMatrix;\n \
@@ -75,9 +74,8 @@ precision highp float;\n \
 const GLchar* fragment_shader_source = "#version 120\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
-precision highp float;\n \
-		layout(location = 5) in highp vec4 outColor;\n \
-		layout(location = 6) in highp vec2 outUV;\n \
+		layout(location = 5) in vec4 outColor;\n \
+		layout(location = 6) in vec2 outUV;\n \
 		out vec4 color;\n \
 		uniform bool stageWireframe;\n \
 		uniform sampler2D tex;\n \
@@ -102,7 +100,7 @@ precision highp float;\n \
 				color = outColor + vec4(0.0, 0.0, 0.0, 0.2);\n \
 			}\n \
 			else if (renderText) {\n \
-				color = vec4(1.0, 1.0, 1.0, texture2D(tex, outUV).r);\n \
+				color = vec4(1.0, 1.0, 1.0, texture2D(tex, outUV).a);\n \
 			}\n \
 			else {\n \
 				color = vec4(outColor.xyz, outColor.w - alpha);\n \
