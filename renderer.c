@@ -37,7 +37,7 @@ int program_created = 0;
 int vertex_shader_created = 0;
 int fragment_shader_created = 0;
 
-const GLchar* vertex_shader_source = "#version 130\n \
+const GLchar* vertex_shader_source = "#version 120\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
 precision highp float;\n \
@@ -72,7 +72,7 @@ precision highp float;\n \
   Inigo Quilez webpage (http://iquilezles.org/www/articles/distfunctions/distfunctions.htm) 
  */
 
-const GLchar* fragment_shader_source = "#version 130\n \
+const GLchar* fragment_shader_source = "#version 120\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
 precision highp float;\n \
@@ -102,7 +102,7 @@ precision highp float;\n \
 				color = outColor + vec4(0.0, 0.0, 0.0, 0.2);\n \
 			}\n \
 			else if (renderText) {\n \
-				color = vec4(1.0, 1.0, 1.0, texture(tex, outUV).r);\n \
+				color = vec4(1.0, 1.0, 1.0, texture2D(tex, outUV).r);\n \
 			}\n \
 			else {\n \
 				color = vec4(outColor.xyz, outColor.w - alpha);\n \
