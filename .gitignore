@@ -55,6 +55,7 @@ pong3d.exe
 pong3d.dir
 x64/
 Debug/
+Release/
 .vs/
 packages/
 build/
