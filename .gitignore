@@ -58,4 +58,7 @@ Debug/
 .vs/
 packages/
 build/
+projects/vs2017/Pong3D/x64
+projects/vs2017/Pong3D/.vs
+projects/vs2017/Pong3D/packages
 

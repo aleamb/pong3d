@@ -40,9 +40,16 @@
     <ClInclude Include="..\..\..\synth.h" />
     <ClInclude Include="..\..\..\tasks.h" />
     <ClInclude Include="..\..\..\text.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\pong3d.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
