@@ -27,6 +27,10 @@ By example, in Debian based systems:
 2. Prepare files to compile
 
 ```
+mkdir build
+```
+
+```
 cd build
 ```
 
