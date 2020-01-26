@@ -5,10 +5,11 @@
 	@brief Generation of game sounds.
 */
 
+#include <SDL2/SDL.h>
 #include "sound.h"
 #include "msys.h"
 #include "synth.h"
-#include "SDL.h"
+#include "math_constants.h"
 
 sample_t* player_pong_sound;
 int player_pong_sound_samples;

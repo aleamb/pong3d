@@ -14,8 +14,6 @@
 
 #include <GL/glew.h>
 
-#define P_2PI 6.283185307f
-
 /**
   @brief Vertex structure is position * 4 + color * 4 + normal * 4 + texture * 2. Float types.
  */

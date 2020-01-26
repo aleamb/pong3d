@@ -5,9 +5,10 @@
   @brief System functions (mainly SDL wrapped functions).
  */
 
-#include "msys.h"
-#include "SDL.h"
+#include <SDL2/SDL.h>
 #include <stdio.h>
+#include "msys.h"
+
 #ifdef _WINDOWS
 #include <windows.h>
 #endif

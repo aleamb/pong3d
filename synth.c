@@ -5,11 +5,10 @@
   @brief Simple software synthetizer based on book "BasicSynth" by Daniel Mitchell. 
  */
 
-#include "synth.h"
 #include <math.h>
 #include <stdlib.h>
-
-#define P_2PI 6.283185307f
+#include "synth.h"
+#include "math_constants.h"
 
 float oscillator(OSCILLATOR_TYPE type, float* ang, float incr)
 {

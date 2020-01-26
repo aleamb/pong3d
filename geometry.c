@@ -4,12 +4,13 @@
 	@date 1 Oct 2017
 	@brief Game objects for pong3d and utils functions for geometry tranformations.
 */
-#include "geometry.h"
-#include "renderer.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "geometry.h"
+#include "renderer.h"
+#include "math_constants.h"
 
 #define OVERLAY_ALPHA 0.8f
 
