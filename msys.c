@@ -5,7 +5,7 @@
   @brief System functions (mainly SDL wrapped functions).
  */
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <stdio.h>
 #include "msys.h"
 

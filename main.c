@@ -5,6 +5,14 @@
 	@brief Pong game in three dimensions. Inspired in pong game by Liquid Media (http://www.liquid.se/pong/).
 */
 
+
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
 #include "geometry.h"
 #include "msys.h"
 #include "pong3d.h"
@@ -13,13 +21,6 @@
 #include "sound.h"
 #include "tasks.h"
 #include "text.h"
-
-#include <math.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 #ifdef _WINDOWS
 #include <windows.h>

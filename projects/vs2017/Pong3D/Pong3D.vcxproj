@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\geometry.h" />
+    <ClInclude Include="..\..\..\math_constants.h" />
     <ClInclude Include="..\..\..\msys.h" />
     <ClInclude Include="..\..\..\pong3d.h" />
     <ClInclude Include="..\..\..\renderer.h" />
