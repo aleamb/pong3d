@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.14)
 message(STATUS "Found CMake ${CMAKE_VERSION}")
 project(Pong3D LANGUAGES C)
 
@@ -13,11 +13,11 @@ add_executable(Pong3D main.c pong3d.c geometry.c renderer.c sound.c synth.c msys
     include_directories(${FREETYPE_INCLUDE_DIRS})
     include_directories(${GLEW_INCLUDE_DIRS})
 
-    target_link_libraries(Pong3D SDL2)
+    target_link_libraries(Pong3D ${SDL2_LIBRARIES})
     target_link_libraries(Pong3D ${FREETYPE_LIBRARIES})
-    target_link_libraries(Pong3D GLEW)
+    target_link_libraries(Pong3D ${GLEW_LIBRARIES})
     target_link_libraries(Pong3D m)
-    target_link_libraries(Pong3D GL)
+    target_link_libraries(Pong3D gl)
 
 
 file(COPY fonts DESTINATION .)
