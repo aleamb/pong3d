@@ -2,7 +2,7 @@ src = $(wildcard *.c)
 obj = $(src:.c=.o)
 CC=gcc
 CFLAGS = -Wall -O3 -D_WINDOWS -D_WIN32 -I/mingw64/include/SDL2/ -I/mingw64/include/freetype2/ -I/mingw64/include/GL/
-LDFLAGS = -lopengl32 -lglew32 -lfreetype -lSDL2 -lm
+LDFLAGS = -mwindows -lopengl32 -lglew32 -lfreetype -lSDL2 -lm
 
 %.c:
 	$(CC) $(CFLAGS) -o $@
