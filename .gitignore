@@ -57,3 +57,5 @@ x64/
 Debug/
 .vs/
 packages/
+build/
+

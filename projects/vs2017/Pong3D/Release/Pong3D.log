@@ -1,0 +1,19 @@
+﻿  geometry.c
+  main.c
+  msys.c
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\ucrt\corecrt_math_defines.h(22,1): warning C4005: 'M_PI': redefinición de macro
+  pong3d.c
+  renderer.c
+  screens.c
+  sound.c
+C:\Users\alex\workspace\pong3d\projects\vs2017\Pong3D\packages\sdl2.2.0.5\build\native\include\SDL_stdinc.h(440): message : vea la definición anterior de 'M_PI'
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\ucrt\corecrt_math_defines.h(22,1): warning C4005: 'M_PI': redefinición de macro
+  synth.c
+  tasks.c
+  text.c
+C:\Users\alex\workspace\pong3d\projects\vs2017\Pong3D\packages\sdl2.2.0.5\build\native\include\SDL_stdinc.h(440): message : vea la definición anterior de 'M_PI'
+  Generando código
+  Previous IPDB not found, fall back to full compilation.
+  All 107 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Generación de código finalizada
+  Pong3D.vcxproj -> C:\Users\alex\workspace\pong3d\projects\vs2017\Pong3D\Release\Pong3D.exe

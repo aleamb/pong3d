@@ -62,7 +62,7 @@ int sys_init_sound(int sample_freq)
 
 #ifdef _WINDOWS
     // avoid issue in SDL > 2.0.5 on Windows
-    SetEnvironmentVariable("SDL_AUDIODRIVER", "directsound");
+    SetEnvironmentVariable((LPCTSTR)L"SDL_AUDIODRIVER", (LPCTSTR)L"directsound");
 #endif
 
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
