@@ -77,18 +77,16 @@
     <ClInclude Include="resource.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="resource1.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="resource.rc">
+    <ResourceCompile Include="..\..\..\resource.rc">
       <Filter>Archivos de recursos</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\..\..\pong3d.ico">
-      <Filter>Archivos de recursos</Filter>
-    </Image>
   </ItemGroup>
 </Project>

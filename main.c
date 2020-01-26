@@ -43,6 +43,7 @@ int main(int argc, char** argv)
         cleanup();
         exit(1000);
     }
+
     if (init_sound(SAMPLE_RATE) < 0) {
         cleanup();
         exit(1001);
@@ -101,11 +102,11 @@ void run_game()
     while (gameState != EXIT) {
         startTime = sys_get_ticks();
         if (pendingEvent) {
-          process_events_task(&event);
+            process_events_task(&event);
         }
         if (currentState != gameState || reset_frames_counter) {
-          framesElapsed = 0;
-          currentState = gameState;
+            framesElapsed = 0;
+            currentState = gameState;
         }
         reset_frames_counter = process_state(framesElapsed, pendingEvent, &event);
         render();
@@ -119,8 +120,6 @@ void run_game()
             wait_time = 0;
         }
         pendingEvent = sys_wait(&event, wait_time);
-      
-     
     }
 }
 
