@@ -163,28 +163,33 @@
     <ClInclude Include="..\..\..\..\synth.h" />
     <ClInclude Include="..\..\..\..\tasks.h" />
     <ClInclude Include="..\..\..\..\text.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\pong3d.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource.rc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\freetype2.2.6.0.1\build\native\freetype2.targets" Condition="Exists('packages\freetype2.2.6.0.1\build\native\freetype2.targets')" />
     <Import Project="packages\sdl2.redist.2.0.5\build\native\sdl2.redist.targets" Condition="Exists('packages\sdl2.redist.2.0.5\build\native\sdl2.redist.targets')" />
     <Import Project="packages\sdl2.2.0.5\build\native\sdl2.targets" Condition="Exists('packages\sdl2.2.0.5\build\native\sdl2.targets')" />
-    <Import Project="packages\glew.redist.1.9.0.1\build\native\glew.redist.targets" Condition="Exists('packages\glew.redist.1.9.0.1\build\native\glew.redist.targets')" />
     <Import Project="packages\unofficial-flayan-glew.redist.2.1.0\build\native\unofficial-flayan-glew.redist.targets" Condition="Exists('packages\unofficial-flayan-glew.redist.2.1.0\build\native\unofficial-flayan-glew.redist.targets')" />
     <Import Project="packages\unofficial-flayan-glew.2.1.0\build\native\unofficial-flayan-glew.targets" Condition="Exists('packages\unofficial-flayan-glew.2.1.0\build\native\unofficial-flayan-glew.targets')" />
-    <Import Project="packages\freetype2.2.6.0.1\build\native\freetype2.targets" Condition="Exists('packages\freetype2.2.6.0.1\build\native\freetype2.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>Este proyecto hace referencia a los paquetes NuGet que faltan en este equipo. Use la restauración de paquetes NuGet para descargarlos. Para obtener más información, consulte http://go.microsoft.com/fwlink/?LinkID=322105. El archivo que falta es {0}.</ErrorText>
     </PropertyGroup>
+    <Error Condition="!Exists('packages\freetype2.2.6.0.1\build\native\freetype2.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\freetype2.2.6.0.1\build\native\freetype2.targets'))" />
     <Error Condition="!Exists('packages\sdl2.redist.2.0.5\build\native\sdl2.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2.redist.2.0.5\build\native\sdl2.redist.targets'))" />
     <Error Condition="!Exists('packages\sdl2.2.0.5\build\native\sdl2.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2.2.0.5\build\native\sdl2.targets'))" />
-    <Error Condition="!Exists('packages\glew.redist.1.9.0.1\build\native\glew.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\glew.redist.1.9.0.1\build\native\glew.redist.targets'))" />
     <Error Condition="!Exists('packages\unofficial-flayan-glew.redist.2.1.0\build\native\unofficial-flayan-glew.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\unofficial-flayan-glew.redist.2.1.0\build\native\unofficial-flayan-glew.redist.targets'))" />
     <Error Condition="!Exists('packages\unofficial-flayan-glew.2.1.0\build\native\unofficial-flayan-glew.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\unofficial-flayan-glew.2.1.0\build\native\unofficial-flayan-glew.targets'))" />
-    <Error Condition="!Exists('packages\freetype2.2.6.0.1\build\native\freetype2.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\freetype2.2.6.0.1\build\native\freetype2.targets'))" />
   </Target>
 </Project>
