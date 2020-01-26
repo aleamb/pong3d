@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3)
 message(STATUS "Found CMake ${CMAKE_VERSION}")
 project(Pong3D LANGUAGES C)
 
