@@ -41,7 +41,7 @@ cmake ..
 3. Compile
 
 ```
-make all
+cmake --build .
 ```
 
 4. Run with
