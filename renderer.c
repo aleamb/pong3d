@@ -37,7 +37,7 @@ int program_created = 0;
 int vertex_shader_created = 0;
 int fragment_shader_created = 0;
 
-const GLchar* vertex_shader_source = "#version 120\n \
+const GLchar* vertex_shader_source = "#version 130\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
 		layout(location = 0) in vec4 in_position;\n \
@@ -71,7 +71,7 @@ const GLchar* vertex_shader_source = "#version 120\n \
   Inigo Quilez webpage (http://iquilezles.org/www/articles/distfunctions/distfunctions.htm) 
  */
 
-const GLchar* fragment_shader_source = "#version 120\n \
+const GLchar* fragment_shader_source = "#version 130\n \
 #extension GL_ARB_separate_shader_objects : enable\n \
 #extension GL_ARB_explicit_attrib_location : require\n \
 		layout(location = 5) in vec4 outColor;\n \
@@ -210,10 +210,8 @@ int init_renderer(int width, int height)
         return -1;
     }
 
-    //puts((const char*)glGetString(GL_VERSION));
-    
     if (!glewGetExtension("GL_ARB_explicit_attrib_location")) {
-	log_error("OpenGL error. No GL_ARB_explicit_attrib_location");
+	    log_error("OpenGL error. No GL_ARB_explicit_attrib_location");
 	return -1;	
     }
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
