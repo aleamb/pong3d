@@ -6,7 +6,7 @@ Pong game in three dimensions write in C using SDL2 and OpenGL 3, recreation of 
 
 ## Building and running
 
-This program depends on:
+This software depends on:
 
 * SDL2 lib
 * Freetype2 lib
@@ -16,9 +16,9 @@ This program depends on:
 
 ### Build on Unix/Linux systems
 
-1. Install CMake and dependencies SDL2, Freetype2, Glew and OpenGL 4 using system package manager.
+1. Install CMake and dependencies SDL2, Freetype2 and Glew using system package manager.
 
-By example, in Debian based systems:
+By example, for Debian based systems:
 
 ```
 # apt-get install cmake libsdl2-dev libglew-dev libfreetype6-dev
@@ -67,7 +67,7 @@ in build directory.
 
 2. Open mingw64 terminal, not msys terminal. Mingw64 terminal is on msys2 directory with name mingw64.exe
 
-3. Install git gcc make
+3. Install git gcc make with pacman package manager.
 
 ```
 pacman -S git gcc make
