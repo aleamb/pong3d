@@ -13,6 +13,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _WINDOWS
+#include <windows.h>
+#endif
+
 #include "geometry.h"
 #include "msys.h"
 #include "pong3d.h"
@@ -22,9 +26,7 @@
 #include "tasks.h"
 #include "text.h"
 
-#ifdef _WINDOWS
-#include <windows.h>
-#endif
+
 
 void run_game();
 void init_game();
