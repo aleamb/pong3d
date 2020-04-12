@@ -48,8 +48,7 @@ int main(int argc, char** argv)
     }
 
     if (init_sound(SAMPLE_RATE) < 0) {
-        cleanup();
-        exit(1001);
+	log_error("Couldn't initialize sound device. The game will run without sound :(");
     }
     if (init_renderer(WINDOW_WIDTH, WINDOW_HEIGHT) < 0) {
         cleanup();
