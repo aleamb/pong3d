@@ -7,8 +7,19 @@ add_executable(pong3D main.c pong3d.c geometry.c renderer.c sound.c synth.c msys
 
 target_compile_options(pong3D PRIVATE -std=c99)
 
+find_package(OpenGL REQUIRED)
+target_link_libraries(pong3D ${OPENGL_LIBRARIES})
+
+if (MINGW)
+   target_link_libraries(pong3D -mwindows)
+endif()
+
+if (WIN32)
+	target_compile_options(pong3D PRIVATE -D_WINDOWS)
+endif()
+
 find_package(SDL2 QUIET)
-if(SDL2_FOUND)
+if(SDL2_FOUND AND SDL2_INCLUDE_DIRS)
     include_directories(${SDL2_INCLUDE_DIRS})
     target_link_libraries(pong3D ${SDL2_LIBRARIES})
 else()
@@ -24,7 +35,7 @@ else()
 endif()
 
 find_package(GLEW QUIET)
-if(GLEW_FOUND)
+if(GLEW_FOUND AND GLEW_INCLUDE_DIRS)
 	include_directories(${GLEW_INCLUDE_DIRS})
     	target_link_libraries(pong3D ${GLEW_LIBRARIES})
 else()
@@ -56,7 +67,5 @@ else()
 endif()
 
 target_link_libraries(pong3D m)
-target_link_libraries(pong3D GL)
-
 
 file(COPY fonts DESTINATION .)
