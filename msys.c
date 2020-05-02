@@ -60,14 +60,7 @@ int sys_init_video(int width, int height)
 
 int sys_init_sound(int sample_freq)
 {
-
-#ifdef _WINDOWS
-    // avoid issue in SDL > 2.0.5 on Windows
-    SetEnvironmentVariable((LPCTSTR)L"SDL_AUDIODRIVER", (LPCTSTR)L"directsound");
-#endif
-
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-		log_error("Sound initialization failed: %s\n", SDL_GetError());
         return -1;
     }
 
@@ -186,7 +179,6 @@ void log_error(char* format, ...)
 	va_end(argptr);
 
 #ifdef _WINDOWS
-	//OutputDebugStringA(error_str);
 	MessageBoxA(0, error_str, "PONG3D", MB_ICONERROR | MB_OK);
 #else
 	fprintf(stderr, "%s\n", error_str);
