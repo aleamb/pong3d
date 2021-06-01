@@ -8,9 +8,6 @@
 #include "pong3d.h"
 #include "geometry.h"
 
-int balls;
-int player_score;
-int opponent_score;
 GAME_STATE gameState, prevGameState;
 
 void change_state(GAME_STATE state)
