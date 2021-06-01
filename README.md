@@ -28,14 +28,9 @@ By example, for Debian based systems:
 
 ```
 mkdir build
-```
-
-```
 cd build
-```
-
-```
 cmake ..
+
 ```
 
 3. Compile
