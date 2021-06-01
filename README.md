@@ -47,7 +47,7 @@ cmake --build .
 4. Run with
 
 ```
-./pong3d
+./pong3D
 ```
 
 in build directory.
