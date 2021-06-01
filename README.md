@@ -24,7 +24,7 @@ By example, for Debian based systems:
 # apt-get install cmake libsdl2-dev libglew-dev libfreetype6-dev
 ```
 
-2. Prepare files to compile
+2. Clone repository and prepare files to compile
 
 ```
 mkdir build
@@ -53,16 +53,20 @@ cmake --build .
 in build directory.
 
 
-### Build on Windows with MSYS2-mingw64
+### Build on Windows with MSYS2
 
-1. Install [MSYS2](https://www.msys2.org/)
+1. Open mingw64 terminal, **not msys terminal**. Mingw64 terminal is on msys2 directory with name mingw64.exe or name MSYS2 MinGW 64-bit
 
-2. Open mingw64 terminal, **not msys terminal**. Mingw64 terminal is on msys2 directory with name mingw64.exe or name MSYS2 MinGW 64-bit
-
-3. Install git, make, cmake, mingw64-gcc and dependencies for this program using pacman package manager.
+2. Install git on MSYS and clone respository:
 
 ```
-pacman -S git mingw-w64-x86_64-make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-freetype
+pacman -S git
+```
+
+3. Install make, cmake, mingw64-gcc and dependencies for this program using pacman package manager.
+
+```
+pacman -S mingw-w64-x86_64-make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-freetype
 ```
 
 4. Build with this steps:
@@ -76,7 +80,7 @@ cmake --build .
 
 ```
 
-6. Run with
+5. Run with
 
 ```
 ./pong3D.exe
