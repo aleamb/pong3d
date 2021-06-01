@@ -57,21 +57,15 @@ in build directory.
 
 1. Install [MSYS2](https://www.msys2.org/)
 
-2. Open mingw64 terminal, **not msys terminal**. Mingw64 terminal is on msys2 directory with name mingw64.exe
+2. Open mingw64 terminal, **not msys terminal**. Mingw64 terminal is on msys2 directory with name mingw64.exe or name MSYS2 MinGW 64-bit
 
-3. Install git, make and mingw64 GCC toolchain with pacman package manager.
-
-```
-pacman -S git make mingw-w64-x86_64-toolchain
-```
-
-4. Install dependencies SDL2, Glew, Freetype2
+3. Install git, make, cmake, mingw64-gcc and dependencies for this program using pacman package manager.
 
 ```
-pacman -S mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-glew mingw64/mingw-w64-x86_64-freetype
+pacman -S git mingw-w64-x86_64-make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-freetype
 ```
 
-5. Build with CMake too
+4. Build with this steps:
 
 ```
 cd pong3d
@@ -85,7 +79,7 @@ cmake --build .
 6. Run with
 
 ```
-./pong3d.exe
+./pong3D.exe
 ```
 
 ### Build on Windows 10 with Visual Studio with NuGet
