@@ -63,7 +63,7 @@ in build directory.
 pacman -S git
 ```
 
-3. Install make, cmake, mingw64-gcc and dependencies for this program using pacman package manager.
+3. Install make, cmake, mingw64-gcc and dependencies for this program, using pacman package manager.
 
 ```
 pacman -S mingw-w64-x86_64-make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-freetype
