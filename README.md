@@ -2,7 +2,7 @@
 
 Pong game in three dimensions write in C using SDL2 and OpenGL 3, recreation of the pong 3d game by Liquid Media (www.liquid.se/pong).
 
-![Pong3D](screenshot.png)
+![Pong3D](pong3d.gif)
 
 ## Building and running
 
